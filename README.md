@@ -132,10 +132,18 @@ xattr -dr com.apple.quarantine /Applications/tokentray.app
 ```
 
 The app is menu-bar only (`LSUIElement`), so there is no Dock icon by design.
-Builds are arm64.
+Builds are arm64 only - there is no Intel build. The CLI ships inside the
+bundle, so `status`, `doctor` and `autostart` are at
+`/Applications/tokentray.app/Contents/MacOS/tokentray`; symlink it onto your
+PATH if you want it as plain `tokentray`. Claude Code keeps its credentials in
+the login keychain rather than a file on macOS, so the first read may raise a
+keychain authorization prompt.
 
-**Linux.** GNOME needs the AppIndicator extension for a tray at all; KDE works
-out of the box. Some distributions need `libxcb-cursor0` installed. Under
+**Linux.** Shipped as a tarball only - no `.deb`, AppImage or Flatpak. Run
+`./install.sh` from the unpacked archive to get a launcher entry and an icon
+(per-user, no root; `./install.sh --uninstall` reverses it). GNOME needs the
+AppIndicator extension for a tray at all; KDE works out of the box. Some
+distributions need `libxcb-cursor0` installed. Under
 Wayland, tokentray runs through XWayland by default because Wayland gives
 clients no say in window placement, which would scatter toasts wherever the
 compositor likes; set `linux.force_xwayland = false` for native Wayland and
@@ -146,8 +154,10 @@ tokens fall back to an owner-only file and setup tells you so.
 
 Tokens go to their own vendor over HTTPS and nowhere else. The only three hosts
 tokentray contacts are `api.anthropic.com`, `chatgpt.com` and `auth.openai.com`
-(plus your webhook, if you configure one). There is no telemetry. Caches and the
-fallback secret file are written owner-only.
+(plus your webhook, if you configure one). There is no telemetry. On macOS and Linux
+the caches and the fallback secret file are written owner-only (`0600`); on
+Windows they inherit the ACL of your user profile directory, which is
+user-scoped by default but not narrowed further.
 
 ## Development
 
@@ -163,7 +173,24 @@ Packaged builds:
 
 ```bash
 uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/tokentray.spec
+./packaging/smoke.sh
 ```
+
+`smoke.sh` is what CI and the release workflow both run against a fresh bundle -
+it checks that both executables exist, that the windowed one answers `--version`
+instead of starting an event loop, and that the macOS bundle launches the GUI
+rather than the CLI.
+
+The icon files are generated from the same painter that draws the tray mark, so
+they never drift from it. Re-run and commit after changing the mark:
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python packaging/make_icons.py
+```
+
+On a Linux machine, `./scripts/verify-linux.sh` runs everything about a desktop
+that can be checked without a person watching, and prints what is left for
+[MANUAL_TEST.md](MANUAL_TEST.md).
 
 ## License
 

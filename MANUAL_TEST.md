@@ -6,6 +6,13 @@ before tagging a release.
 
 Legend: **W** Windows 11 · **M** macOS · **L** Ubuntu (both GNOME/Wayland and X11)
 
+Some of this no longer needs a person. `tests/test_platform.py` covers the
+autostart backends, both IPC transports and the Wayland plugin choice on every
+CI runner, and `scripts/verify-linux.sh` covers items 19, 22, 25-27 and 30 plus
+the Qt library and Korean font prerequisites on a real Linux box. What is left
+below is what only eyes can settle: whether the icon reads at 16 px, whether the
+toast landed in the right corner, whether Korean text fits its box.
+
 ## Tray presence
 
 | # | Check | W | M | L |
@@ -43,7 +50,7 @@ Legend: **W** Windows 11 · **M** macOS · **L** Ubuntu (both GNOME/Wayland and 
 | # | Check | W | M | L |
 |---|---|---|---|---|
 | 18 | Launching a second time raises the panel instead of adding a second icon. | ☐ | ☐ | ☐ |
-| 19 | `tokentray status` in a terminal reports data from the running app and prints its pid. | ☐ | ☐ | ☐ |
+| 19 | `tokentray status` in a terminal reports data from the running app and prints its pid. On macOS and Linux the CLI is `dist/tokentray/tokentray`, or `tokentray.app/Contents/MacOS/tokentray` inside the bundle. | ☐ | ☐ | ☐ |
 | 20 | On a Korean or Japanese Windows console (cp949/cp932), `tokentray status` prints without a UnicodeEncodeError. | ☐ | n/a | n/a |
 | 21 | Enable start-at-login, log out and back in, and confirm it starts with no console window and no welcome toast. | ☐ | ☐ | ☐ |
 | 22 | Disable it and confirm the registration is gone (`tokentray autostart status`). | ☐ | ☐ | ☐ |
@@ -66,3 +73,23 @@ Legend: **W** Windows 11 · **M** macOS · **L** Ubuntu (both GNOME/Wayland and 
 | 29 | Set `linux.force_xwayland = false`, restart under Wayland, and confirm it degrades to the notification-centre path instead of misplacing toasts. | ☐ |
 | 30 | With no SecretService running (`env -u DBUS_SESSION_BUS_ADDRESS`), `tokentray setup` falls back to the owner-only file and says so. | ☐ |
 | 31 | Works on both GNOME (with the AppIndicator extension) and KDE. | ☐ |
+
+## macOS specifics
+
+| # | Check | |
+|---|---|---|
+| 32 | Claude Code stores its credentials in the login keychain rather than a file. Confirm the first read either succeeds silently or raises a keychain authorization prompt - and that clicking **Deny** degrades the provider to an error line instead of crashing the app. | ☐ |
+| 33 | After denying, confirm the prompt does **not** return on every poll (default 120 s). A modal every two minutes from an app with no Dock icon is unusable. | ☐ |
+| 34 | The `.app` shows the ring icon in Finder and in the Gatekeeper dialog - not a generic placeholder. | ☐ |
+| 35 | Downloaded from a release (not built locally), the bundle is quarantined; confirm `xattr -dr com.apple.quarantine` is what unblocks it, since a locally built `.app` carries no quarantine flag and cannot test this. | ☐ |
+| 36 | Ad-hoc signatures change on every rebuild, which invalidates the keychain ACL. After installing an update, confirm the keychain prompt returning once is the worst that happens. | ☐ |
+
+## What the checklist cannot reach
+
+- **Gatekeeper** (item 35) only triggers on a downloaded artifact. A local
+  `pyinstaller` build is never quarantined, so this waits for the first tagged
+  release.
+- **Item 21** needs a real log out and back in on each OS; nothing simulates it.
+- **Item 31** needs two Linux desktops, not two distributions - GNOME with the
+  AppIndicator extension and KDE - because their tray hosts are different
+  implementations and a pass on one says nothing about the other.

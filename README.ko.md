@@ -129,10 +129,16 @@ xattr -dr com.apple.quarantine /Applications/tokentray.app
 ```
 
 메뉴 막대 전용 앱(`LSUIElement`)이라 Dock 아이콘은 의도적으로 없습니다. 빌드는
-arm64입니다.
+arm64 전용이며 Intel 빌드는 없습니다. CLI는 번들 안에 들어 있어서 `status`,
+`doctor`, `autostart`는 `/Applications/tokentray.app/Contents/MacOS/tokentray`에
+있습니다. 그냥 `tokentray`로 쓰고 싶으면 PATH에 심볼릭 링크를 걸면 됩니다.
+macOS에서 Claude Code는 자격증명을 파일이 아니라 로그인 키체인에 두기 때문에, 처음
+읽을 때 키체인 접근 허용 창이 뜰 수 있습니다.
 
-**Linux.** GNOME은 트레이를 쓰려면 AppIndicator 확장이 필요하고, KDE는 그대로
-동작합니다. 일부 배포판은 `libxcb-cursor0`를 설치해야 합니다. Wayland에서는 기본적으로
+**Linux.** tarball로만 배포합니다 — `.deb`, AppImage, Flatpak은 없습니다. 압축을
+푼 뒤 `./install.sh`를 실행하면 런처 항목과 아이콘이 등록됩니다(사용자 단위, root
+불필요. `./install.sh --uninstall`로 되돌립니다). GNOME은 트레이를 쓰려면
+AppIndicator 확장이 필요하고, KDE는 그대로 동작합니다. 일부 배포판은 `libxcb-cursor0`를 설치해야 합니다. Wayland에서는 기본적으로
 XWayland를 거쳐 실행되는데, Wayland가 클라이언트에게 창 위치를 정할 권한을 주지 않아
 토스트가 컴포지터 마음대로 흩어지기 때문입니다. 네이티브 Wayland와 알림 센터 알림을
 쓰려면 `linux.force_xwayland = false`로 바꾸세요. SecretService 데몬이 없으면 붙여넣은
@@ -142,8 +148,10 @@ XWayland를 거쳐 실행되는데, Wayland가 클라이언트에게 창 위치�
 
 토큰은 각자의 vendor에게 HTTPS로만 전달되고 그 밖의 어디로도 가지 않습니다. tokentray가
 접속하는 호스트는 `api.anthropic.com`, `chatgpt.com`, `auth.openai.com` 세 곳뿐입니다
-(웹훅을 설정했다면 그 주소까지). 텔레메트리는 없습니다. 캐시와 대체 시크릿 파일은 소유자
-전용으로 기록됩니다.
+(웹훅을 설정했다면 그 주소까지). 텔레메트리는 없습니다. macOS와 Linux에서는 캐시와 대체
+시크릿 파일을 소유자 전용(`0600`)으로 씁니다. Windows에서는 사용자 프로필 디렉터리의
+ACL을 그대로 물려받는데, 기본적으로 사용자 단위이긴 하지만 그 이상으로 좁히지는
+않습니다.
 
 ## 개발
 
@@ -159,7 +167,22 @@ uv run pytest
 
 ```bash
 uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/tokentray.spec
+./packaging/smoke.sh
 ```
+
+`smoke.sh`는 CI와 릴리스 워크플로가 갓 만든 번들에 대해 똑같이 돌리는 스크립트입니다.
+실행 파일 두 개가 다 있는지, 윈도우 모드 실행 파일이 이벤트 루프를 띄우지 않고
+`--version`에 답하는지, macOS 번들이 CLI가 아니라 GUI를 띄우는지를 확인합니다.
+
+아이콘 파일은 트레이 마크를 그리는 그 페인터에서 생성되므로 서로 어긋나지 않습니다.
+마크를 바꾸면 다시 생성해서 커밋하세요.
+
+```bash
+QT_QPA_PLATFORM=offscreen uv run python packaging/make_icons.py
+```
+
+리눅스 머신에서는 `./scripts/verify-linux.sh`가 사람 없이 확인 가능한 항목을 모두
+돌리고, 남은 항목을 [MANUAL_TEST.md](MANUAL_TEST.md) 기준으로 알려줍니다.
 
 ## 라이선스
 
