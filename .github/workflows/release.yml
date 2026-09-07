@@ -48,15 +48,9 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Windows" ]; then
-            ./dist/tokentray/tokentray.exe --version
-          elif [ "$RUNNER_OS" = "macOS" ]; then
-            ./dist/tokentray.app/Contents/MacOS/tokentray-gui --version || true
-            ./dist/tokentray/tokentray-gui --version
-          else
-            ./dist/tokentray/tokentray-gui --version
-          fi
+        # Same script CI runs on every pull request, so a release cannot be the
+        # first build anyone actually checks.
+        run: ./packaging/smoke.sh
 
       - name: Sign ad-hoc (macOS)
         if: runner.os == 'macOS'
@@ -68,13 +62,19 @@ jobs:
       - name: Archive
         shell: bash
         run: |
-          cd dist
           if [ "$RUNNER_OS" = "Windows" ]; then
-            7z a -tzip "../${{ matrix.asset }}.zip" tokentray
+            cd dist && 7z a -tzip "../${{ matrix.asset }}.zip" tokentray
           elif [ "$RUNNER_OS" = "macOS" ]; then
-            zip -qry "../${{ matrix.asset }}.zip" tokentray.app
+            cd dist && zip -qry "../${{ matrix.asset }}.zip" tokentray.app
           else
-            tar czf "../${{ matrix.asset }}.tar.gz" tokentray
+            # Linux gets the desktop integration alongside the binaries: there is
+            # no package manager in a tarball, so install.sh is how the app gets
+            # a launcher entry and an icon.
+            cp packaging/linux/install.sh packaging/linux/*.desktop dist/
+            mkdir -p dist/resources
+            cp packaging/resources/tokentray-*.png dist/resources/
+            cd dist && tar czf "../${{ matrix.asset }}.tar.gz" \
+              tokentray install.sh io.github.messy-snail.tokentray.desktop resources
           fi
 
       - uses: actions/upload-artifact@v4
