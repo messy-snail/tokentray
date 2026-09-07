@@ -110,10 +110,19 @@ class PollWorker(QObject):
             provider.close()
 
 
-class Controller:
-    """Owns application state and connects the pieces."""
+class Controller(QObject):
+    """Owns application state and connects the pieces.
+
+    A QObject, and deliberately so: the poll thread reaches the UI through
+    ``snapshots_ready``, and Qt can only queue that onto the main thread if the
+    receiver has a thread affinity to queue it to. A plain Python receiver has
+    none, so Qt would call the slot directly on the poll thread - which paints
+    widgets from the wrong thread and aborts outright on macOS, where AppKit
+    refuses to build an NSWindow off the main thread.
+    """
 
     def __init__(self, app, config: Config, *, autostart_launch: bool = False) -> None:
+        super().__init__()
         self.app = app
         self.config = config
         self.autostart_launch = autostart_launch
