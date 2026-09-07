@@ -48,6 +48,15 @@ def main(autostart_launch: bool = False, **kwargs: Any) -> int:
     if "--autostart" in sys.argv:
         autostart_launch = True
 
+    # Answered before Qt exists: this is the one thing a packaging smoke test can
+    # ask a windowed binary, and building a QApplication to answer it would start
+    # an event loop the caller has no way to end.
+    if "--version" in sys.argv or "-V" in sys.argv:
+        from . import __version__
+
+        print(f"tokentray {__version__}")
+        return 0
+
     config = Config.load()
     _configure_logging()
     _select_platform_plugin(config)
