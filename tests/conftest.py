@@ -1,7 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+
+# Qt must never try to reach a real display from the suite: CI runners have none,
+# and a developer running tests should not get windows flashing on screen.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 
