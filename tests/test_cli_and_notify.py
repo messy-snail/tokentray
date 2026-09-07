@@ -30,18 +30,6 @@ CLAUDE_BODY = {
 }
 
 
-@pytest.fixture
-def isolated_config(tmp_path, monkeypatch):
-    """Point every path helper at a scratch directory."""
-    from tokentray.core import paths
-
-    for name in ("config_dir", "cache_dir", "state_dir", "log_dir", "runtime_dir"):
-        target = tmp_path / name
-        target.mkdir(parents=True, exist_ok=True)
-        monkeypatch.setattr(paths, name, lambda t=target: t)
-    return tmp_path
-
-
 class TestStatusCommand:
     def test_renders_windows_from_a_live_fetch(self, isolated_config, claude_credentials):
         with respx.mock:

@@ -32,6 +32,18 @@ def isolate_environment(tmp_path, monkeypatch):
 
 
 @pytest.fixture
+def isolated_config(tmp_path, monkeypatch):
+    """Point every path helper at a scratch directory."""
+    from tokentray.core import paths
+
+    for name in ("config_dir", "cache_dir", "state_dir", "log_dir", "runtime_dir"):
+        target = tmp_path / name
+        target.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(paths, name, lambda t=target: t)
+    return tmp_path
+
+
+@pytest.fixture
 def config() -> Config:
     return Config({"poll_interval": 120})
 
