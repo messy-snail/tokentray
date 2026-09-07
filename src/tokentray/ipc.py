@@ -29,6 +29,9 @@ CMD_STATUS = "status"
 CMD_STOP = "stop"
 CMD_TEST = "test-alert"
 
+# Commands are tiny and come from our own CLI, so this only bounds a misbehaving client.
+READ_TIMEOUT_MS = 500
+
 
 def socket_name() -> str:
     """Address of the command channel.
@@ -147,13 +150,21 @@ class SingleInstance:
         self._lock.unlock()
 
     def _on_connection(self) -> None:
+        """Read one command, answer it, and close.
+
+        Handled synchronously rather than through a readyRead callback: the
+        socket is owned by C++, and a deferred callback can run after Qt has
+        already destroyed it ("Internal C++ object already deleted"). Commands
+        are a few bytes from our own CLI, so the wait is immeasurable.
+        """
         if self._server is None:
             return
         connection = self._server.nextPendingConnection()
         if connection is None:
             return
-
-        def handle() -> None:
+        try:
+            if not connection.waitForReadyRead(READ_TIMEOUT_MS):
+                return
             raw = bytes(connection.readAll()).decode("utf-8", "replace").strip()
             if not raw:
                 return
@@ -168,6 +179,12 @@ class SingleInstance:
                 response = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
             connection.write((json.dumps(response) + "\n").encode("utf-8"))
             connection.flush()
-            connection.disconnectFromServer()
-
-        connection.readyRead.connect(handle)
+            connection.waitForBytesWritten(READ_TIMEOUT_MS)
+        except Exception:
+            log.exception("IPC connection failed")
+        finally:
+            try:
+                connection.disconnectFromServer()
+                connection.deleteLater()
+            except RuntimeError:
+                pass  # already gone; nothing to clean up

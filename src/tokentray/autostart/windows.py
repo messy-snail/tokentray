@@ -67,7 +67,6 @@ def _split(value: str) -> list[str]:
     the Win32 parser that produced it.
     """
     import ctypes
-    from ctypes import wintypes
 
     argc = ctypes.c_int()
     parser = ctypes.windll.shell32.CommandLineToArgvW

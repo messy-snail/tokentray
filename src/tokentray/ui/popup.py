@@ -25,7 +25,7 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QColor, QGuiApplication, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QGuiApplication, QPainter
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,

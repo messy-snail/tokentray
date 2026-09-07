@@ -28,6 +28,8 @@ app = typer.Typer(
 )
 config_app = typer.Typer(help="Read and write configuration values.")
 app.add_typer(config_app, name="config")
+autostart_app = typer.Typer(help="Manage starting tokentray at login.")
+app.add_typer(autostart_app, name="autostart")
 
 
 @app.callback(invoke_without_command=True)
@@ -56,15 +58,57 @@ def run(
 @app.command()
 def status(
     refresh: bool = typer.Option(False, "--refresh", help="Bypass the cache and fetch now."),
+    local: bool = typer.Option(False, "--local", help="Always fetch here, ignoring a running app."),
 ) -> None:
     """Print current quota for every configured provider."""
+    from . import ipc
+
     config = Config.load()
     i18n.set_language(config.language)
+
+    if not local:
+        # Ask the running instance first: it already has fresh data, and a second
+        # fetch would spend a request to learn the same thing.
+        remote = ipc.send_command(ipc.CMD_REFRESH if refresh else ipc.CMD_STATUS)
+        if remote is not None and remote.get("ok"):
+            for line in _format_remote(remote):
+                echo(line)
+            return
+
     views = _collect_views(config, force=refresh)
     for line in _format_status(views):
-        typer.echo(line)
+        echo(line)
     if not any(view.rows for view in views):
         raise typer.Exit(1)
+
+
+@app.command()
+def setup() -> None:
+    """Interactive first-run configuration."""
+    from .setup_wizard import run as run_wizard
+
+    config = Config.load()
+    i18n.set_language(config.language)
+    raise typer.Exit(run_wizard(config))
+
+
+@app.command("open")
+def open_panel() -> None:
+    """Show the detail panel of the running app."""
+    _require_running(ipc_command="show")
+
+
+@app.command("refresh")
+def refresh_now() -> None:
+    """Ask the running app to fetch fresh data."""
+    _require_running(ipc_command="refresh")
+
+
+@app.command("stop")
+def stop() -> None:
+    """Quit the running app."""
+    _require_running(ipc_command="stop", quiet=True)
+    typer.echo("stopped")
 
 
 @app.command()
@@ -73,7 +117,7 @@ def doctor() -> None:
     config = Config.load()
     i18n.set_language(config.language)
     for line in _diagnose(config):
-        typer.echo(line)
+        echo(line)
 
 
 @config_app.command("get")
@@ -104,6 +148,35 @@ def config_set(key: str, value: str) -> None:
     typer.echo(f"{key} = {parsed!r}  ({path})")
 
 
+@autostart_app.command("enable")
+def autostart_enable() -> None:
+    """Start tokentray automatically at login."""
+    from . import autostart as auto
+
+    if not auto.enable():
+        typer.secho("could not enable autostart", fg=typer.colors.RED, err=True)
+        raise typer.Exit(1)
+    typer.echo(f"enabled: {' '.join(auto.gui_command())}")
+
+
+@autostart_app.command("disable")
+def autostart_disable() -> None:
+    """Stop launching tokentray at login."""
+    from . import autostart as auto
+
+    auto.disable()
+    typer.echo("disabled")
+
+
+@autostart_app.command("status")
+def autostart_status() -> None:
+    """Report whether tokentray is registered to start at login."""
+    from . import autostart as auto
+
+    typer.echo(auto.describe())
+    typer.echo(f"command: {' '.join(auto.gui_command())}")
+
+
 @config_app.command("path")
 def config_path() -> None:
     """Print the location of every file tokentray writes."""
@@ -116,6 +189,40 @@ def config_path() -> None:
 
 
 # -- internals ----------------------------------------------------------------
+
+# The status output uses emoji and box-drawing characters. A Korean Windows
+# console is cp949 and a Japanese one cp932; writing an unencodable character
+# there raises UnicodeEncodeError and kills the command. Substitute rather than
+# crash, and keep the meaning: the tier marker is the point, not the emoji.
+_FALLBACKS = {
+    "🟢": "[ok]", "🟡": "[! ]", "🔴": "[!!]",
+    "🔥": "(hot)", "⚡": "(fast)", "✅": "(ok)", "🐢": "(slow)",
+    "■": "#", "□": ".", "·": "-", "—": "-", "…": "...",
+    "✓": "*", "×": "x",
+}
+
+
+def _console_safe(text: str) -> str:
+    encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+    try:
+        text.encode(encoding)
+        return text
+    except (UnicodeEncodeError, LookupError):
+        pass
+    out = []
+    for char in text:
+        try:
+            char.encode(encoding)
+            out.append(char)
+        except (UnicodeEncodeError, LookupError):
+            out.append(_FALLBACKS.get(char, "?"))
+    return "".join(out)
+
+
+def echo(text: str = "") -> None:
+    typer.echo(_console_safe(text))
+
+
 
 _MISSING = object()
 
@@ -221,6 +328,52 @@ def _tray_report() -> str:
     qapp = QApplication.instance() or QApplication([])
     available = QSystemTrayIcon.isSystemTrayAvailable()
     return f"{'available' if available else 'NOT available'} (platform: {qapp.platformName()})"
+
+
+def _require_running(*, ipc_command: str, quiet: bool = False) -> None:
+    from . import ipc
+
+    if ipc.send_command(ipc_command) is None:
+        typer.secho(
+            "tokentray is not running - start it with `tokentray`",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+        raise typer.Exit(1)
+    if not quiet:
+        typer.echo("ok")
+
+
+def _format_remote(payload: dict) -> list[str]:
+    """Render the snapshot a running instance reported over IPC."""
+    lines: list[str] = []
+    for provider in payload.get("providers", []):
+        if lines:
+            lines.append("")
+        title = str(provider.get("title", ""))
+        lines.append(title)
+        lines.append("-" * max(len(title), 24))
+        if provider.get("message"):
+            lines.append(f"  {provider['message']}")
+        for window in provider.get("windows", []):
+            emoji = compute.TIER_EMOJI.get(window.get("tier", "green"), "")
+            lines.append(f"  {emoji} {window.get('label')}: {window.get('text')}")
+            lines.append(f"     {compute.progress_bar(float(window.get('remaining', 0)))}")
+            detail = "  ".join(x for x in (window.get("refills"), window.get("burns")) if x)
+            if detail:
+                lines.append(f"     {detail}")
+            if window.get("pace"):
+                lines.append(f"     {window['pace']}")
+        for note in provider.get("notes", []):
+            lines.append(f"  {note}")
+        if provider.get("source"):
+            lines.append(f"  {i18n.t('label.source')}: {provider['source']}")
+    footer = f"(from the running app, pid {payload.get('pid')})"
+    if payload.get("paused"):
+        footer = f"(from the running app, pid {payload.get('pid')}; alerts paused)"
+    lines.append("")
+    lines.append(footer)
+    return lines or ["no providers enabled"]
 
 
 def _flatten(data: dict, prefix: str = "") -> list[tuple[str, object]]:
