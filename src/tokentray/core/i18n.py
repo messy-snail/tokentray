@@ -68,6 +68,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.body": "It lives in your system tray — click the icon for details.",
         "welcome.ack": "Got it",
         "welcome.tray_settings": "Open tray settings",
+        "welcome.menu_bar_manager": "Using a menu bar manager like Bartender, "
+                                    "Ice or Hidden Bar? You may need to unhide "
+                                    "tokentray there.",
         "test.body": "Notifications are working. This is what an alert looks like.",
         # formats
         "fmt.remaining": "{pct}% remaining",
@@ -131,6 +134,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.body": "시스템 트레이에서 백그라운드로 동작해요 — 아이콘을 클릭하면 상세를 볼 수 있어요.",
         "welcome.ack": "알겠어요",
         "welcome.tray_settings": "트레이 설정 열기",
+        "welcome.menu_bar_manager": "Bartender, Ice, Hidden Bar 같은 메뉴 막대 관리 "
+                                    "앱을 쓰고 있다면 거기서 tokentray를 보이도록 "
+                                    "설정해야 할 수 있어요.",
         "test.body": "알림이 정상 동작합니다. 실제 알림은 이런 모습이에요.",
         # formats
         "fmt.remaining": "{pct}% 남음",

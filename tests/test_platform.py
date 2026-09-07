@@ -97,6 +97,50 @@ class TestPollThreadNeverTouchesWidgets:
             controller._thread.wait(3000)
 
 
+class TestWelcomeToast:
+    """A tray icon nobody can find is the same as no tray icon.
+
+    Both Windows and macOS can swallow a brand new item - the overflow flyout
+    there, a menu bar manager here - so the one-time welcome has to say so.
+    """
+
+    @pytest.fixture
+    def captured(self, qapp, isolated_config, monkeypatch):
+        from tokentray import app as app_mod
+        from tokentray.ui import popup
+
+        controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))
+        recorded: dict = {}
+        # Record the arguments rather than build a real card: this is about what
+        # the welcome says, not how it draws.
+        monkeypatch.setattr(popup, "Toast", lambda **kw: recorded.update(kw) or kw)
+        monkeypatch.setattr(controller.toasts, "show", lambda toast: None)
+        monkeypatch.setattr(controller.tray, "show_message", lambda *args: None)
+
+        def build(platform: str) -> dict:
+            monkeypatch.setattr(sys, "platform", platform)
+            controller._show_welcome()
+            return recorded
+
+        return build
+
+    def test_macos_points_at_menu_bar_managers(self, captured):
+        toast = captured("darwin")
+        assert "Bartender" in toast["detail"]
+        # There is no settings URL to offer: the manager is somebody else's app.
+        assert [label for label, _ in toast["actions"]] == ["Got it"]
+
+    def test_windows_offers_the_tray_settings_shortcut(self, captured):
+        toast = captured("win32")
+        assert toast["detail"] == ""
+        assert [label for label, _ in toast["actions"]] == ["Open tray settings", "Got it"]
+
+    def test_linux_needs_neither(self, captured):
+        toast = captured("linux")
+        assert toast["detail"] == ""
+        assert [label for label, _ in toast["actions"]] == ["Got it"]
+
+
 class TestGuiCommand:
     """What each OS is asked to run at login."""
 

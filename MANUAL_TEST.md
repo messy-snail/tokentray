@@ -83,6 +83,7 @@ toast landed in the right corner, whether Korean text fits its box.
 | 34 | The `.app` shows the ring icon in Finder and in the Gatekeeper dialog - not a generic placeholder. | ☐ |
 | 35 | Downloaded from a release (not built locally), the bundle is quarantined; confirm `xattr -dr com.apple.quarantine` is what unblocks it, since a locally built `.app` carries no quarantine flag and cannot test this. | ☐ |
 | 36 | Ad-hoc signatures change on every rebuild, which invalidates the keychain ACL. After installing an update, confirm the keychain prompt returning once is the worst that happens. | ☐ |
+| 37 | With a menu bar manager running (Bartender, Ice, Hidden Bar), confirm the welcome toast carries the line about unhiding tokentray - and that the icon is findable once unhidden. Managers hide new items by default, which is how a working app reads as a broken one. | ☐ |
 
 ## What the checklist cannot reach
 

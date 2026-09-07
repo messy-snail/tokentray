@@ -299,15 +299,22 @@ class Controller(QObject):
         from .ui.popup import Toast
 
         actions: list[tuple[str, Any]] = []
+        detail = ""
         if sys.platform == "win32":
             # New tray icons hide in the overflow area, where nobody finds them.
             actions.append((i18n.t("welcome.tray_settings"), _open_tray_settings))
+        elif sys.platform == "darwin":
+            # Stock macOS shows the icon, but a menu bar manager hides new items
+            # by default - the same "where did it go" as the Windows overflow,
+            # with no settings URL to offer because it belongs to another app.
+            detail = i18n.t("welcome.menu_bar_manager")
         actions.append((i18n.t("welcome.ack"), lambda: None))
 
         self.toasts.show(
             Toast(
                 title=i18n.t("welcome.title"),
                 body=i18n.t("welcome.body"),
+                detail=detail,
                 tier="green",
                 sticky=True,
                 actions=actions,
