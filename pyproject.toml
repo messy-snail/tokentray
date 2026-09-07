@@ -1,6 +1,6 @@
 [project]
 name = "tokentray"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Cross-platform system-tray monitor for Claude Code and OpenAI Codex quota, with pretty desktop alerts."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -10,6 +10,8 @@ authors = [{ name = "hskang" }]
 keywords = ["claude-code", "openai-codex", "usage-monitoring", "system-tray", "quota"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: MacOS X",
+    "Environment :: Win32 (MS Windows)",
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -51,6 +53,10 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# One version string for the wheel, the CLI and the macOS bundle.
+path = "src/tokentray/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tokentray"]
