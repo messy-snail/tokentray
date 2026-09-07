@@ -102,22 +102,31 @@ def _pen(color: QColor, width: float) -> QPen:
     return pen
 
 
+def render_app_pixmap(size: int) -> QPixmap:
+    """The identity mark at one size: a nearly-closed ring at a neutral colour.
+
+    Split out from :func:`app_icon` so the packaging script can render the same
+    mark at the sizes a .icns or .ico wants, which run far past the tray sizes.
+    """
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        thickness = max(2.0, size * 0.17)
+        inset = thickness / 2 + max(1.0, size * 0.06)
+        rect = QRectF(inset, inset, size - inset * 2, size - inset * 2)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setPen(_pen(QColor(TIER_COLORS["green"]), thickness))
+        painter.drawArc(rect, _TOP, -300 * _DEG)
+    finally:
+        painter.end()
+    return pixmap
+
+
 def app_icon() -> QIcon:
     """Window/dock icon: a full ring at a neutral colour."""
     icon = QIcon()
     for size in ICON_SIZES:
-        pixmap = QPixmap(size, size)
-        pixmap.fill(Qt.GlobalColor.transparent)
-        painter = QPainter(pixmap)
-        try:
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            thickness = max(2.0, size * 0.17)
-            inset = thickness / 2 + max(1.0, size * 0.06)
-            rect = QRectF(inset, inset, size - inset * 2, size - inset * 2)
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(_pen(QColor(TIER_COLORS["green"]), thickness))
-            painter.drawArc(rect, _TOP, -300 * _DEG)
-        finally:
-            painter.end()
-        icon.addPixmap(pixmap)
+        icon.addPixmap(render_app_pixmap(size))
     return icon
