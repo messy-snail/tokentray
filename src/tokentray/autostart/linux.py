@@ -50,6 +50,10 @@ def enable(command: list[str]) -> None:
                 "Type=Application",
                 "Name=tokentray",
                 "Comment=Claude Code and Codex quota monitor",
+                # Named, not a path: GNOME's Startup Applications list shows a
+                # generic placeholder without it. Resolves once install.sh has
+                # put the PNGs into hicolor, and harmlessly falls back if not.
+                "Icon=io.github.messy-snail.tokentray",
                 f"Exec={exec_line}",
                 "Terminal=false",
                 "X-GNOME-Autostart-enabled=true",

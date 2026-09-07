@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=tokentray
+GenericName=Quota Monitor
+Comment=Claude Code and Codex quota monitor
+Exec=tokentray-gui
+Icon=io.github.messy-snail.tokentray
+Terminal=false
+Categories=Utility;Monitor;
+Keywords=claude;codex;quota;usage;tray;
+StartupNotify=false
