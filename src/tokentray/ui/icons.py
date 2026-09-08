@@ -95,10 +95,10 @@ def _draw_segment(
     painter.drawArc(rect, _TOP, -swept if clockwise else swept)
 
 
-def _pen(color: QColor, width: float) -> QPen:
+def _pen(color: QColor, width: float, *, rounded: bool = False) -> QPen:
     pen = QPen(color)
     pen.setWidthF(width)
-    pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap if rounded else Qt.PenCapStyle.FlatCap)
     return pen
 
 
@@ -117,7 +117,7 @@ def render_app_pixmap(size: int) -> QPixmap:
         inset = thickness / 2 + max(1.0, size * 0.06)
         rect = QRectF(inset, inset, size - inset * 2, size - inset * 2)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(_pen(QColor(TIER_COLORS["green"]), thickness))
+        painter.setPen(_pen(QColor(TIER_COLORS["green"]), thickness, rounded=True))
         painter.drawArc(rect, _TOP, -300 * _DEG)
     finally:
         painter.end()

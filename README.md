@@ -64,6 +64,7 @@ locale, and offers to start tokentray at login.
 | `tokentray open` / `refresh` / `stop` | Control a running instance |
 | `tokentray doctor` | Check credentials, keyring and tray availability |
 | `tokentray config get/set/path` | Read and write settings |
+| `tokentray webhook setup/test` | Configure and test Slack, Discord, ntfy, or a generic webhook |
 | `tokentray autostart enable/disable/status` | Manage start-at-login |
 
 ## How it finds your tokens
@@ -104,9 +105,23 @@ changed it in the meantime.
 | `language` | from locale | `en` or `ko` |
 | `popup.duration` | `8` | Seconds a toast stays up |
 | `native_notifications` | `true` | Also send to the OS notification centre |
-| `webhook.enabled` / `.kind` / `.url` | off | `ntfy` or `generic` JSON POST |
+| `webhook.enabled` / `.kind` | off | One of `slack`, `discord`, `ntfy`, or `generic` |
 | `codex.refresh` | `false` | Let tokentray refresh the Codex token |
 | `linux.force_xwayland` | `true` | See below |
+
+Choose **Notification integrations…** from the tray menu to configure one
+outbound destination, validate its URL and send a test. Slack and Discord use
+their Incoming Webhook feature; the URL is stored in the OS keyring rather than
+the regular config file. You can also configure it from a terminal:
+
+```bash
+tokentray webhook setup --service slack
+tokentray webhook test
+```
+
+Slack takes the sender name and icon from the Slack app that owns the webhook,
+so set the included `packaging/resources/tokentray-512.png` as that app's icon.
+Discord likewise lets you set the webhook avatar in the channel settings.
 
 ## Why the notifications are drawn, not native
 

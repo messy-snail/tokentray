@@ -10,8 +10,8 @@ from __future__ import annotations
 from typing import Callable
 
 from ..core.alerts import AlertEvent
-from ..core.i18n import t
 from ..ui.popup import MAX_VISIBLE, ToastManager
+from .formatting import summarize
 from .webhook import Webhook
 
 
@@ -38,10 +38,11 @@ class Dispatcher:
         self._toasts.show_alerts(events)
 
         if len(events) > MAX_VISIBLE:
-            title = t("notify.summary_title")
-            body = t("fmt.summary", n=len(events))
-            self._notify_native(title, body)
-            self._webhook.send_summary(title, body, _worst_priority(events))
+            summary = summarize(events)
+            self._notify_native(summary.title, summary.body)
+            self._webhook.send_summary(
+                summary.title, summary.body, _worst_priority(events), detail=summary.detail
+            )
             return
 
         for event in events:

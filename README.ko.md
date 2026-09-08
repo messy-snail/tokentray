@@ -64,6 +64,7 @@ tokentray setup
 | `tokentray open` / `refresh` / `stop` | 실행 중인 인스턴스 제어 |
 | `tokentray doctor` | 자격 증명, 키링, 트레이 사용 가능 여부 점검 |
 | `tokentray config get/set/path` | 설정 읽기와 쓰기 |
+| `tokentray webhook setup/test` | Slack, Discord, ntfy 또는 일반 웹훅 설정과 테스트 |
 | `tokentray autostart enable/disable/status` | 로그인 시 시작 관리 |
 
 ## 토큰을 어떻게 찾나요
@@ -103,9 +104,22 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 | `language` | 로캘에서 결정 | `en` 또는 `ko` |
 | `popup.duration` | `8` | 토스트가 떠 있는 시간(초) |
 | `native_notifications` | `true` | OS 알림 센터로도 함께 보내기 |
-| `webhook.enabled` / `.kind` / `.url` | 꺼짐 | `ntfy` 또는 `generic` JSON POST |
+| `webhook.enabled` / `.kind` | 꺼짐 | `slack`, `discord`, `ntfy`, `generic` 중 한 곳 |
 | `codex.refresh` | `false` | tokentray가 Codex 토큰을 갱신하도록 허용 |
 | `linux.force_xwayland` | `true` | 아래 참고 |
+
+트레이 메뉴에서 **알림 연동 설정…**을 선택하면 외부 알림 목적지 한 곳을 고르고, URL을
+검증하고, 테스트 알림을 보낼 수 있습니다. Slack과 Discord는 Incoming Webhook을 쓰며,
+URL은 일반 설정 파일이 아니라 OS 키링에 저장됩니다. 터미널에서도 설정할 수 있습니다.
+
+```bash
+tokentray webhook setup --service slack
+tokentray webhook test
+```
+
+Slack 발신자 이름과 아이콘은 웹훅을 만든 Slack 앱 설정을 따릅니다. 앱 아이콘에는
+`packaging/resources/tokentray-512.png`를 쓰면 됩니다. Discord도 채널의 웹훅 설정에서
+같은 파일을 아바타로 지정할 수 있습니다.
 
 ## 알림을 왜 직접 그리나요
 

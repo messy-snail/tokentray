@@ -39,8 +39,9 @@ DEFAULTS: dict[str, Any] = {
     },
     "webhook": {
         "enabled": False,
-        "kind": "ntfy",       # ntfy | generic
+        "kind": "ntfy",       # ntfy | generic | slack | discord
         "url": "",
+        "configured": False,
     },
     "linux": {
         # Wayland ignores client-side window placement, so toasts land wherever

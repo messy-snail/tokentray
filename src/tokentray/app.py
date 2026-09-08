@@ -154,9 +154,10 @@ class Controller(QObject):
             duration=config.popup_duration, anchor_widget_geometry=self.tray.geometry
         )
         self.toasts.on_activated = self.show_panel
+        self.webhook = Webhook.from_config(config)
         self.dispatcher = Dispatcher(
             self.toasts,
-            Webhook.from_config(config),
+            self.webhook,
             native=self.tray.show_message,
             native_enabled=bool(config.get("native_notifications", True)),
         )
@@ -198,6 +199,7 @@ class Controller(QObject):
     def _shutdown(self) -> None:
         self._timer.stop()
         self.toasts.clear()
+        self.webhook.close()
         self.tray.stop()
         # Close the HTTP clients on the thread that created them, then join.
         QMetaObject.invokeMethod(
@@ -239,6 +241,7 @@ class Controller(QObject):
         self.tray.open_panel.connect(self.show_panel)
         self.tray.refresh_requested.connect(lambda: self.refresh(force=True))
         self.tray.test_requested.connect(self.show_test_alert)
+        self.tray.integration_requested.connect(self.show_integration_settings)
         self.tray.pause_toggled.connect(self.toggle_pause)
         self.tray.autostart_toggled.connect(self._set_autostart)
         self.tray.language_selected.connect(self.set_language)
@@ -252,15 +255,42 @@ class Controller(QObject):
     def show_test_alert(self) -> None:
         from .ui.popup import Toast
 
-        self.toasts.show(
-            Toast(
-                title=i18n.t("notify.info_title"),
-                body=i18n.t("test.body"),
-                tier="green",
-                fraction=0.62,
-                detail=i18n.t("fmt.refills", dur="3h 42m"),
-                duration=self.config.popup_duration,
+        samples = (
+            ("Claude Code", "test.claude_body", "green", 0.62, "3h 42m"),
+            ("Codex", "test.codex_body", "orange", 0.38, "2d 7h"),
+        )
+        for provider, body_key, tier, fraction, reset in samples:
+            self.toasts.show(
+                Toast(
+                    title=i18n.t("fmt.notify_title", provider=provider),
+                    body=i18n.t(body_key),
+                    tier=tier,
+                    fraction=fraction,
+                    detail=i18n.t("fmt.refills", dur=reset),
+                    duration=self.config.popup_duration,
+                )
             )
+
+    def show_integration_settings(self) -> None:
+        from .ui.integration import IntegrationDialog
+
+        existing = getattr(self, "_integration_dialog", None)
+        if existing is not None and existing.isVisible():
+            existing.raise_()
+            existing.activateWindow()
+            return
+        dialog = IntegrationDialog(self.config, on_saved=self._apply_webhook_settings)
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
+        self._integration_dialog = dialog
+
+    def _apply_webhook_settings(self, settings) -> None:
+        self.webhook.reconfigure(
+            enabled=settings.enabled,
+            kind=settings.kind,
+            url=settings.url,
+            configured=settings.configured,
         )
 
     def toggle_pause(self) -> None:
@@ -348,6 +378,9 @@ class Controller(QObject):
             self.refresh(force=True)
         elif command == ipc.CMD_TEST:
             self.show_test_alert()
+        elif command == ipc.CMD_RELOAD_WEBHOOK:
+            self.config = Config.load()
+            self.webhook.reconfigure_from_config(self.config)
         elif command == ipc.CMD_STOP:
             self.quit()
         return {

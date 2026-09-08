@@ -15,7 +15,10 @@ run the same code.
 - Start-at-login on Windows, macOS and Linux, registering the GUI entry point.
 - Single-instance enforcement with a local command socket.
 - English and Korean, chosen from the desktop locale on first run.
-- Optional ntfy or generic JSON webhook delivery.
+- Optional Slack, Discord, ntfy or generic webhook delivery, configurable from
+  the tray with URLs kept in the OS keyring.
+- Provider-labelled notifications with the tokentray ring icon, so Claude Code
+  and Codex alerts can be identified at a glance.
 
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;

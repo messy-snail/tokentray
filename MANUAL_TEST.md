@@ -29,13 +29,15 @@ toast landed in the right corner, whether Korean text fits its box.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
-| 8 | "Test notification" shows a toast in the corner: rounded card, tier-coloured stripe, progress meter, readable at a glance. | ☐ | ☐ | ☐ |
+| 8 | "Test notification" shows separate Claude Code and Codex toasts, each with the tokentray ring, provider name, tier-coloured stripe and progress meter. | ☐ | ☐ | ☐ |
 | 9 | The toast does **not** steal focus - keep typing in an editor while it appears and confirm no keystrokes are lost. | ☐ | ☐ | ☐ |
 | 10 | It fades out on its own after ~8 s, and hovering it stops that countdown. | ☐ | ☐ | ☐ |
 | 11 | Clicking the toast opens the detail panel. | ☐ | ☐ | ☐ |
 | 12 | Two toasts stack without overlapping; dismissing the lower one slides the other down. | ☐ | ☐ | ☐ |
 | 13 | The toast lands on the screen holding the tray icon in a multi-monitor setup. | ☐ | ☐ | ☐ |
 | 14 | "Pause alerts for 1 hour" silences toasts; the menu entry flips to "Resume". | ☐ | ☐ | ☐ |
+| 14a | Open "Notification integrations…", configure one Slack or Discord webhook, and confirm "Send test" reaches only that destination with the correct provider-style layout. | ☐ | ☐ | ☐ |
+| 14b | Change the selected service and confirm the old URL is cleared, a new URL is required, and saving applies without restarting tokentray. | ☐ | ☐ | ☐ |
 
 ## Appearance
 

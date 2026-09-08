@@ -14,7 +14,7 @@ from typing import Any, Iterable, Literal
 
 from . import i18n
 from .compute import format_local_reset
-from .view import ProviderView, WindowRow
+from .view import PROVIDER_NAMES, ProviderView, WindowRow
 
 THRESHOLD_ARMED = 100
 REMIND_ARMED = 999
@@ -45,6 +45,8 @@ class AlertEvent:
     tier: str = "orange"
     priority: Priority = "default"
     row: WindowRow | None = None
+    provider: str | None = None
+    detail: str = ""
 
 
 @dataclass
@@ -111,8 +113,10 @@ def evaluate(
         info.extend(_status_events(view, state))
         for row in view.rows:
             active = _is_active(row, state)
-            usage.extend(_threshold_events(row, thresholds, state))
-            usage.extend(_reminder_events(row, remind_before, state, clock, active))
+            usage.extend(_threshold_events(row, thresholds, state, view.provider))
+            usage.extend(
+                _reminder_events(row, remind_before, state, clock, active, view.provider)
+            )
             state.last_used[row.key] = row.stats.window.used_pct
 
     if not state.seeded:
@@ -128,7 +132,9 @@ def evaluate(
     return info + usage
 
 
-def _threshold_events(row: WindowRow, thresholds: list[int], state: AlertState) -> list[AlertEvent]:
+def _threshold_events(
+    row: WindowRow, thresholds: list[int], state: AlertState, provider: str
+) -> list[AlertEvent]:
     remaining = row.remaining
     last = state.threshold.get(row.key, THRESHOLD_ARMED)
     if remaining > last:
@@ -149,11 +155,12 @@ def _threshold_events(row: WindowRow, thresholds: list[int], state: AlertState) 
         AlertEvent(
             kind="threshold",
             key=row.key,
-            title=i18n.t("notify.title"),
+            title=_alert_title(provider),
             body=i18n.t("fmt.notify", label=row.label, pct=remaining),
             tier=row.tier,
             priority=_priority(level),
             row=row,
+            provider=provider,
         )
     ]
 
@@ -177,6 +184,7 @@ def _reminder_events(
     state: AlertState,
     clock: datetime,
     active: bool,
+    provider: str,
 ) -> list[AlertEvent]:
     if not remind_before:
         return []
@@ -205,7 +213,7 @@ def _reminder_events(
         AlertEvent(
             kind="reminder",
             key=row.key,
-            title=i18n.t("notify.reset_title"),
+            title=_alert_title(provider),
             body=i18n.t(
                 "fmt.reset_remind",
                 label=row.label,
@@ -214,6 +222,7 @@ def _reminder_events(
             ),
             tier=row.tier,
             row=row,
+            provider=provider,
         )
     ]
 
@@ -235,12 +244,18 @@ def _status_events(view: ProviderView, state: AlertState) -> list[AlertEvent]:
         AlertEvent(
             kind="info",
             key=f"{view.provider}.status",
-            title=i18n.t("notify.info_title"),
+            title=_alert_title(view.provider),
             body=view.message,
             tier="orange",
             priority="high",
+            provider=view.provider,
         )
     ]
+
+
+def _alert_title(provider: str | None) -> str:
+    name = PROVIDER_NAMES.get(provider or "", provider or i18n.t("notify.info_title"))
+    return i18n.t("fmt.notify_title", provider=name)
 
 
 def _priority(level: int) -> Priority:

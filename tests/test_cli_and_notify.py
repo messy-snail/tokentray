@@ -9,8 +9,10 @@ from tokentray import ipc
 from tokentray.cli import app as cli_app
 from tokentray.core.alerts import AlertEvent
 from tokentray.core.config import Config
-from tokentray.core.secrets import CLAUDE_ACCESS_TOKEN, SecretStore
-from tokentray.notify.webhook import Webhook
+from tokentray.core.secrets import CLAUDE_ACCESS_TOKEN, WEBHOOK_URL, SecretStore
+from tokentray.notify.configuration import save_destination
+from tokentray.notify.formatting import summarize
+from tokentray.notify.webhook import Webhook, validate_destination
 from tokentray.providers.claude import USAGE_URL as CLAUDE_URL
 from tokentray.providers.codex import USAGE_URL as CODEX_URL
 
@@ -234,6 +236,100 @@ class TestWebhook:
             Config({"webhook": {"enabled": True, "kind": "generic", "url": "https://x/y"}})
         )
         assert webhook.enabled and webhook.kind == "generic"
+
+    def test_slack_uses_blocks_and_fallback_text(self):
+        import json
+
+        url = "https://hooks.slack.com/services/T/B/secret"
+        with respx.mock:
+            route = respx.post(url).mock(return_value=httpx.Response(200, text="ok"))
+            result = Webhook(enabled=True, kind="slack", url=url).deliver(
+                AlertEvent(
+                    kind="threshold", key="codex.7d", title="tokentray · Codex",
+                    body="7d: 10% remaining", provider="codex", priority="urgent",
+                )
+            )
+        assert result.ok
+        payload = json.loads(route.calls[0].request.content)
+        assert payload["blocks"][0]["text"]["text"] == "tokentray · Codex"
+        assert "10%" in payload["text"]
+
+    def test_discord_uses_embed_and_disables_mentions(self):
+        import json
+
+        url = "https://discord.com/api/webhooks/123/secret"
+        with respx.mock:
+            route = respx.post(url).mock(return_value=httpx.Response(200, json={}))
+            result = Webhook(enabled=True, kind="discord", url=url).deliver(
+                AlertEvent(
+                    kind="threshold", key="claude.5h", title="tokentray · Claude Code",
+                    body="5-Hour Session: 25% remaining", provider="claude", tier="orange",
+                )
+            )
+        assert result.ok
+        request = route.calls[0].request
+        payload = json.loads(request.content)
+        assert request.url.params["wait"] == "true"
+        assert payload["allowed_mentions"] == {"parse": []}
+        assert payload["embeds"][0]["footer"]["text"] == "Claude Code"
+
+    def test_service_urls_are_validated(self):
+        assert validate_destination("slack", "https://example.com/hook")
+        assert validate_destination("discord", "http://discord.com/api/webhooks/1/x")
+        assert not validate_destination("discord", "https://discord.com/api/webhooks/1/x")
+        assert not validate_destination("generic", "http://localhost:8080/hook")
+
+    def test_rate_limit_waits_once_then_retries(self, monkeypatch):
+        url = "https://discord.com/api/webhooks/123/secret"
+        waits: list[float] = []
+        monkeypatch.setattr("tokentray.notify.webhook.time.sleep", waits.append)
+        with respx.mock:
+            route = respx.post(url).mock(
+                side_effect=[
+                    httpx.Response(429, json={"retry_after": 0.25}),
+                    httpx.Response(200, json={}),
+                ]
+            )
+            result = Webhook(enabled=True, kind="discord", url=url).deliver(
+                AlertEvent(kind="info", key="test", title="tokentray", body="test")
+            )
+        assert result.ok
+        assert route.call_count == 2
+        assert waits == [0.25]
+
+    def test_settings_move_url_into_secret_store(self, tmp_path, monkeypatch):
+        store = SecretStore(tmp_path / "secrets.toml")
+        monkeypatch.setattr(store, "_keyring", lambda: None)
+        config = Config({}, tmp_path / "config.toml")
+        settings = save_destination(
+            config,
+            enabled=True,
+            kind="slack",
+            url="https://hooks.slack.com/services/T/B/secret",
+            store=store,
+        )
+        assert settings.enabled and settings.configured
+        assert store.get(WEBHOOK_URL).endswith("/secret")
+        assert Config.load(tmp_path / "config.toml").get("webhook.url") == ""
+
+    def test_config_output_does_not_reveal_legacy_url(self, isolated_config):
+        config = Config.load()
+        config.set("webhook.url", "https://hooks.slack.com/services/T/B/secret")
+        config.save()
+        result = runner.invoke(cli_app, ["config", "get", "webhook.url"])
+        assert "secret" not in result.stdout
+        assert "********" in result.stdout
+
+    def test_mixed_summary_names_both_providers(self):
+        summary = summarize(
+            [
+                AlertEvent(kind="threshold", key="claude.5h", title="c", body="b", provider="claude"),
+                AlertEvent(kind="threshold", key="codex.7d", title="x", body="b", provider="codex"),
+            ]
+        )
+        assert summary.title == "tokentray · Claude Code + Codex"
+        assert "Claude Code 1" in summary.body
+        assert "Codex 1" in summary.body
 
 
 class TestIpcClient:

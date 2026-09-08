@@ -29,6 +29,7 @@ class Tray(QObject):
     open_panel = Signal()
     refresh_requested = Signal()
     test_requested = Signal()
+    integration_requested = Signal()
     pause_toggled = Signal()
     autostart_toggled = Signal(bool)
     language_selected = Signal(str)
@@ -133,6 +134,10 @@ class Tray(QObject):
         test = QAction(t("menu.test_alert"), menu)
         test.triggered.connect(self.test_requested.emit)
         menu.addAction(test)
+
+        integration = QAction(t("menu.integration"), menu)
+        integration.triggered.connect(self.integration_requested.emit)
+        menu.addAction(integration)
 
         menu.addSeparator()
 

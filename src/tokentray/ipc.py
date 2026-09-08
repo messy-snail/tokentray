@@ -28,6 +28,7 @@ CMD_REFRESH = "refresh"
 CMD_STATUS = "status"
 CMD_STOP = "stop"
 CMD_TEST = "test-alert"
+CMD_RELOAD_WEBHOOK = "reload-webhook"
 
 # Commands are tiny and come from our own CLI, so this only bounds a misbehaving client.
 READ_TIMEOUT_MS = 500

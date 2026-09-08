@@ -30,6 +30,8 @@ config_app = typer.Typer(help="Read and write configuration values.")
 app.add_typer(config_app, name="config")
 autostart_app = typer.Typer(help="Manage starting tokentray at login.")
 app.add_typer(autostart_app, name="autostart")
+webhook_app = typer.Typer(help="Configure one outbound notification destination.")
+app.add_typer(webhook_app, name="webhook")
 
 
 @app.callback(invoke_without_command=True)
@@ -126,13 +128,13 @@ def config_get(key: Optional[str] = typer.Argument(None)) -> None:
     config = Config.load()
     if key is None:
         for dotted, value in sorted(_flatten(config.as_dict())):
-            typer.echo(f"{dotted} = {value!r}")
+            typer.echo(f"{dotted} = {_config_repr(dotted, value)}")
         return
     value = config.get(key, _MISSING)
     if value is _MISSING:
         typer.secho(f"unknown key: {key}", fg=typer.colors.RED, err=True)
         raise typer.Exit(1)
-    typer.echo(repr(value))
+    typer.echo(_config_repr(key, value))
 
 
 @config_app.command("set")
@@ -142,6 +144,20 @@ def config_set(key: str, value: str) -> None:
     if config.get(key, _MISSING) is _MISSING:
         typer.secho(f"unknown key: {key}", fg=typer.colors.RED, err=True)
         raise typer.Exit(1)
+    if key == "webhook.url":
+        from .notify.configuration import save_destination
+
+        save_destination(
+            config,
+            enabled=bool(config.get("webhook.enabled", False)),
+            kind=str(config.get("webhook.kind", "generic")),
+            url=value,
+        )
+        _reload_running_webhook()
+        from .core import paths
+
+        typer.echo(f"webhook.url = '********'  ({paths.config_file()})")
+        return
     parsed = parse_value(value)
     config.set(key, parsed)
     path = config.save()
@@ -188,6 +204,44 @@ def config_path() -> None:
     typer.echo(f"log     {paths.log_file()}")
 
 
+@webhook_app.command("setup")
+def webhook_setup(
+    service: str = typer.Option("slack", "--service", "-s", help="slack, discord, ntfy, or generic"),
+    url: Optional[str] = typer.Option(None, "--url", help="Webhook URL (prompted securely when omitted)."),
+    disabled: bool = typer.Option(False, "--disabled", help="Save the destination without enabling it."),
+) -> None:
+    """Save a webhook URL in the OS keyring and apply it to the running app."""
+    from .notify.configuration import save_destination
+
+    value = url if url is not None else typer.prompt("Webhook URL", hide_input=True)
+    config = Config.load()
+    try:
+        settings = save_destination(
+            config, enabled=not disabled, kind=service.lower(), url=value
+        )
+    except ValueError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(1) from exc
+    _reload_running_webhook()
+    typer.echo(f"{settings.kind} webhook {'enabled' if settings.enabled else 'saved'}")
+
+
+@webhook_app.command("test")
+def webhook_test() -> None:
+    """Send one test message to the configured destination."""
+    from .core.alerts import AlertEvent
+    from .notify.webhook import Webhook
+
+    hook = Webhook.from_config(Config.load())
+    result = hook.deliver(
+        AlertEvent(kind="info", key="test", title="tokentray", body="Webhook notifications are working.")
+    )
+    if not result.ok:
+        typer.secho(f"delivery failed: {result.error}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(1)
+    typer.echo("test notification sent")
+
+
 # -- internals ----------------------------------------------------------------
 
 # The status output uses emoji and box-drawing characters. A Korean Windows
@@ -225,6 +279,18 @@ def echo(text: str = "") -> None:
 
 
 _MISSING = object()
+
+
+def _config_repr(key: str, value: object) -> str:
+    if key == "webhook.url" and value:
+        return repr("********")
+    return repr(value)
+
+
+def _reload_running_webhook() -> None:
+    from . import ipc
+
+    ipc.send_command(ipc.CMD_RELOAD_WEBHOOK)
 
 
 def _collect_views(config: Config, *, force: bool) -> list[ProviderView]:

@@ -37,8 +37,8 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.alerts import AlertEvent
-from ..core.i18n import t
-from . import theme
+from ..notify.formatting import summarize
+from . import icons, theme
 
 CARD_WIDTH = 372
 SHADOW_MARGIN = 20
@@ -190,6 +190,11 @@ class Toast(QWidget):
 
         header = QHBoxLayout()
         header.setSpacing(8)
+        mark = QLabel(card)
+        mark.setObjectName("app-icon")
+        mark.setFixedSize(16, 16)
+        mark.setPixmap(icons.render_app_pixmap(16))
+        header.addWidget(mark, 0, Qt.AlignmentFlag.AlignVCenter)
         heading = QLabel(title, card)
         heading.setStyleSheet(
             f"font-family: {theme.FONT_STACK}; font-size: 11px; font-weight: 600;"
@@ -320,14 +325,13 @@ class ToastManager:
             return
         if len(events) > MAX_VISIBLE:
             worst = min(events, key=lambda e: e.row.remaining if e.row else 100)
+            summary = summarize(events)
             self.show(
                 Toast(
-                    title=t("notify.summary_title"),
-                    body=t("fmt.summary", n=len(events)),
+                    title=summary.title,
+                    body=summary.body,
                     tier=worst.tier,
-                    detail=" · ".join(
-                        f"{e.row.label} {e.row.remaining}%" for e in events if e.row
-                    )[:160],
+                    detail=summary.detail,
                     duration=self.duration,
                 )
             )

@@ -24,6 +24,7 @@ CLAUDE_ACCESS_TOKEN = "claude.access_token"
 CODEX_ACCESS_TOKEN = "codex.access_token"
 CODEX_REFRESH_TOKEN = "codex.refresh_token"
 CODEX_ACCOUNT_ID = "codex.account_id"
+WEBHOOK_URL = "webhook.url"
 
 _fallback_warned = False
 

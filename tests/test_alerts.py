@@ -123,6 +123,8 @@ class TestThresholds:
             state,
         )
         assert {e.key for e in events} == {"claude.5h", "codex.primary"}
+        assert {e.provider for e in events} == {"claude", "codex"}
+        assert {e.title for e in events} == {"tokentray · Claude Code", "tokentray · Codex"}
 
 
 class TestReminders:

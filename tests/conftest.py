@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from pathlib import Path
 
 # Qt must never try to reach a real display from the suite: CI runners have none,
@@ -26,6 +27,12 @@ def isolate_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    # Windows IPC uses a per-user named pipe, so an installed/running tokentray
+    # would otherwise answer tests that expect an isolated process.
+    from tokentray import ipc
+
+    ipc_user = f"pytest-{uuid.uuid4().hex}"
+    monkeypatch.setattr(ipc, "_username", lambda: ipc_user)
     i18n.set_language("en")
     yield
     i18n.set_language("en")
@@ -40,6 +47,9 @@ def isolated_config(tmp_path, monkeypatch):
         target = tmp_path / name
         target.mkdir(parents=True, exist_ok=True)
         monkeypatch.setattr(paths, name, lambda t=target: t)
+    # Controller tests assert English UI copy and must not depend on the host's
+    # desktop locale (this developer machine is Korean; CI is usually English).
+    paths.config_file().write_text('language = "en"\n', encoding="utf-8")
     return tmp_path
 
 

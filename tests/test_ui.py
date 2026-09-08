@@ -13,11 +13,13 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication, QLabel  # noqa: E402
 
 from tokentray.core import i18n  # noqa: E402
 from tokentray.core.alerts import AlertEvent  # noqa: E402
+from tokentray.core.config import Config  # noqa: E402
 from tokentray.core.models import Snapshot, Status, UsageWindow  # noqa: E402
+from tokentray.core.secrets import SecretStore  # noqa: E402
 from tokentray.core.view import build_view  # noqa: E402
 from tokentray.ui import icons, popup, theme  # noqa: E402
 
@@ -57,6 +59,7 @@ def make_event(remaining=25, tier="orange", priority="high"):
         tier=tier,
         priority=priority,
         row=view.rows[0],
+        provider="claude",
     )
 
 
@@ -97,6 +100,8 @@ class TestToast:
     def test_constructs_and_closes(self, qapp):
         toast = popup.Toast(title="t", body="b", fraction=0.5, detail="d")
         assert toast.width() > 0
+        mark = toast.findChild(QLabel, "app-icon")
+        assert mark is not None and mark.pixmap() is not None
         toast.close()
 
     def test_does_not_take_focus(self, qapp):
@@ -165,8 +170,20 @@ class TestTray:
         tray = Tray()
         labels = [a.text() for a in tray._menu.actions() if a.text()]
         assert i18n.t("menu.open_panel") in labels
+        assert i18n.t("menu.integration") in labels
         assert i18n.t("menu.quit") in labels
         tray.stop()
+
+    def test_integration_dialog_exposes_one_destination(self, qapp, tmp_path, monkeypatch):
+        from tokentray.ui.integration import IntegrationDialog
+
+        config = Config({}, tmp_path / "config.toml")
+        store = SecretStore(tmp_path / "secrets.toml")
+        monkeypatch.setattr(store, "_keyring", lambda: None)
+        dialog = IntegrationDialog(config, on_saved=lambda _settings: None, store=store)
+        assert dialog.kind.count() == 4
+        assert dialog.url.echoMode() == dialog.url.EchoMode.Password
+        dialog.close()
 
     def test_retranslate_rebuilds_in_the_new_language(self, qapp):
         from tokentray.ui.tray import Tray

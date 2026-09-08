@@ -147,7 +147,9 @@ class TestGuiCommand:
     def test_frozen_build_prefers_the_sibling_gui_executable(self, tmp_path, monkeypatch):
         monkeypatch.setattr(sys, "frozen", True, raising=False)
         monkeypatch.setattr(sys, "executable", str(tmp_path / "tokentray"))
-        sibling = tmp_path / autostart.ENTRY
+        sibling = tmp_path / (
+            f"{autostart.ENTRY}.exe" if os.name == "nt" else autostart.ENTRY
+        )
         sibling.write_text("", encoding="utf-8")
         assert autostart.gui_command() == [str(sibling)]
 
@@ -395,10 +397,11 @@ class TestRuntimeDirectory:
         assert paths.runtime_dir() == tmp_path / "run"
 
     @pytest.mark.parametrize("platform", ["darwin", "win32"])
-    def test_elsewhere_it_is_the_state_directory(self, platform, monkeypatch):
+    def test_elsewhere_it_is_the_state_directory(self, platform, monkeypatch, tmp_path):
         # platformdirs aliases the runtime dir to a cache path off Linux, and
         # cache cleaners delete sockets - a vanished socket reads as "not running".
         monkeypatch.setattr(sys, "platform", platform)
+        monkeypatch.setattr(paths, "state_dir", lambda: tmp_path)
         assert paths.runtime_dir() == paths.state_dir()
 
 
@@ -493,11 +496,22 @@ class TestIpcRoundTrip:
             instance.release()
 
     def test_a_second_instance_stands_down(self, qapp, short_runtime):
+        import threading
+
         first = ipc.SingleInstance(lambda command: {"ok": True})
         assert first.acquire() is True
         try:
             second = ipc.SingleInstance(lambda command: {"ok": True})
-            assert second.acquire() is False
+            result: dict[str, bool] = {}
+            thread = threading.Thread(
+                target=lambda: result.setdefault("acquired", second.acquire()), daemon=True
+            )
+            thread.start()
+            deadline = time.monotonic() + 10
+            while thread.is_alive() and time.monotonic() < deadline:
+                qapp.processEvents()
+            thread.join(timeout=2)
+            assert result.get("acquired") is False
         finally:
             first.release()
 
@@ -511,6 +525,9 @@ class TestIpcRoundTrip:
         import threading
 
         box: dict[str, dict | None] = {}
+        # On Windows, QLocalServer publishes the named pipe on the next Qt turn.
+        # Give it that turn before the worker attempts an immediate open.
+        qapp.processEvents()
         thread = threading.Thread(
             target=lambda: box.setdefault("reply", ipc.send_command(command)),
             daemon=True,
