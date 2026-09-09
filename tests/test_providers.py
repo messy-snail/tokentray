@@ -2,13 +2,17 @@ from __future__ import annotations
 
 import json
 import time
+from copy import deepcopy
+from datetime import datetime, timezone
 
 import httpx
 import pytest
 import respx
 
 from tokentray.core.config import Config
+from tokentray.core.alerts import AlertState, evaluate
 from tokentray.core.models import Status
+from tokentray.core.view import build_view, tooltip
 from tokentray.providers import build_providers
 from tokentray.providers.base import SchemaError
 from tokentray.providers.claude import USAGE_URL as CLAUDE_URL
@@ -248,23 +252,72 @@ class TestCodexParsing:
         assert len(snapshot.windows) == 1
         assert snapshot.windows[0].window_secs == 604800
 
-    def test_per_model_sub_limits_are_reported(self, codex):
-        snapshot = codex.parse(CODEX_SUBLIMIT_BODY)
-        assert [w.key for w in snapshot.windows] == [
-            "codex.primary",
-            "codex.codex_bengalfox.primary",
-            "codex.codex_bengalfox.secondary",
-        ]
-        spark = snapshot.windows[1]
-        assert spark.window_secs == 18000
-        assert spark.qualifier == "Spark"
+    @pytest.mark.parametrize("used", [0, 40, 100])
+    @pytest.mark.parametrize("identity", [
+        {"metered_feature": "codex_bengalfox"},
+        {"metered_feature": " CODEX_BENGALFOX ", "limit_name": "Other"},
+        {"limit_name": "GPT-5.3-Codex-Spark"},
+        {"metered_feature": "unknown", "limit_name": " GPT-5.3-Codex-sPaRk "},
+        {"metered_feature": None, "limit_name": "Spark"},
+    ])
+    def test_spark_windows_are_excluded(self, codex, used, identity):
+        body = deepcopy(CODEX_SUBLIMIT_BODY)
+        rate = body["additional_rate_limits"][0]["rate_limit"]
+        for window in rate.values():
+            window["used_percent"] = used
+        body["additional_rate_limits"] = [{**identity, "rate_limit": rate}]
+        snapshot = codex.parse(body)
+        assert [w.key for w in snapshot.windows] == ["codex.primary"]
+        assert snapshot.windows[0].window_secs == 604800
 
     def test_an_unused_sub_limit_is_still_shown(self, codex):
-        """Unlike Claude's, because it is the only place a five-hour cadence
-        shows up on a plan whose own quota is weekly-only."""
-        snapshot = codex.parse(CODEX_SUBLIMIT_BODY)
+        body = deepcopy(CODEX_SUBLIMIT_BODY)
+        body["additional_rate_limits"].append({
+            "metered_feature": "other_feature",
+            "limit_name": "Other",
+            "rate_limit": body["additional_rate_limits"][0]["rate_limit"],
+        })
+        snapshot = codex.parse(body)
         unused = [w for w in snapshot.windows if w.used_pct == 0]
         assert [w.window_secs for w in unused] == [18000, 604800]
+        assert all(w.qualifier == "Other" for w in unused)
+
+    def test_main_five_hour_limit_is_preserved_alongside_spark(self, codex):
+        body = {**CODEX_BODY, "additional_rate_limits": CODEX_SUBLIMIT_BODY["additional_rate_limits"]}
+        assert codex.parse(body).windows == codex.parse(CODEX_BODY).windows
+
+    @pytest.mark.parametrize("stale", [False, True])
+    def test_existing_cache_also_excludes_spark(self, codex, stale):
+        codex.cache.store("codex", CODEX_SUBLIMIT_BODY, now=1000)
+        now = 1001
+        if stale:
+            codex.cache.mark_failure("codex", ttl=120, note="offline", now=1500)
+            now = 1501
+        with respx.mock:
+            snapshot = codex.fetch(now=now)
+        assert snapshot.status is (Status.STALE if stale else Status.CACHED)
+        assert [w.key for w in snapshot.windows] == ["codex.primary"]
+
+    def test_exhausted_spark_does_not_affect_display_or_alerts(self, codex):
+        from tokentray.cli import _format_status
+
+        body = deepcopy(CODEX_SUBLIMIT_BODY)
+        now = 1_788_980_000
+        clock = datetime.fromtimestamp(now, timezone.utc)
+        body["rate_limit"]["primary_window"]["used_percent"] = 10
+        for window in body["additional_rate_limits"][0]["rate_limit"].values():
+            window.update(used_percent=100, reset_at=now + 300)
+        view = build_view(codex.parse(body), clock)
+        assert view.worst_remaining == 90
+        assert view.tier == "green"
+        assert [row.label for row in view.rows] == ["7 days"]
+        assert "Spark" not in tooltip([view])
+        assert "Spark" not in "\n".join(_format_status([view]))
+        events = evaluate(
+            [view], thresholds=[50, 25, 10], remind_before=[60, 30, 10],
+            state=AlertState(seeded=True), now=now, clock=clock,
+        )
+        assert events == []
 
     def test_code_review_limit_gets_its_own_key(self, codex):
         body = dict(CODEX_SUBLIMIT_BODY)
@@ -294,7 +347,7 @@ class TestCodexParsing:
         body = dict(CODEX_SUBLIMIT_BODY)
         body["additional_rate_limits"] = [
             {
-                "limit_name": "GPT-5.3-Codex-Spark",
+                "limit_name": "Other-Model",
                 "rate_limit": {
                     "primary_window": {
                         "used_percent": 1.0,
@@ -305,7 +358,7 @@ class TestCodexParsing:
             }
         ]
         snapshot = codex.parse(body)
-        assert snapshot.windows[1].key == "codex.gpt_5_3_codex_spark.primary"
+        assert snapshot.windows[1].key == "codex.other_model.primary"
 
     def test_missing_rate_limit_is_a_schema_change(self, codex):
         with pytest.raises(SchemaError):

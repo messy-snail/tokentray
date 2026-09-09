@@ -177,12 +177,10 @@ class CodexProvider(BaseProvider):
             raise SchemaError("rate_limit.primary_window.used_percent missing")
 
         windows = _windows_from("codex", rate_limit)
-        # Sub-limits scoped to one model or feature. Unlike Claude's per-model
-        # rows these are kept even at 0%: they carry a cadence the main bucket
-        # does not have - a weekly-only plan still gets a five-hour limit here -
-        # so an unused one is the only place that fact is visible.
+        # Exclude Spark before building snapshots so it cannot affect any
+        # display, tray colour or alert. Keep other sub-limits even at 0%.
         for index, entry in enumerate(_as_list(body.get("additional_rate_limits"))):
-            if not isinstance(entry, dict):
+            if not isinstance(entry, dict) or _is_spark(entry):
                 continue
             slug = _slug(entry.get("metered_feature"), entry.get("limit_name"), index)
             windows.extend(
@@ -278,6 +276,13 @@ def _window(key: str, block: dict[str, Any], *, qualifier: str = "") -> UsageWin
 
 def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def _is_spark(entry: dict[str, Any]) -> bool:
+    feature = entry.get("metered_feature")
+    return (
+        isinstance(feature, str) and feature.strip().casefold() == "codex_bengalfox"
+    ) or _short_name(entry.get("limit_name")).casefold() == "spark"
 
 
 def _slug(feature: Any, limit_name: Any, index: int) -> str:
