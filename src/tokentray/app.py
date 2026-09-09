@@ -382,7 +382,8 @@ class Controller(QObject):
             self.config = Config.load()
             self.webhook.reconfigure_from_config(self.config)
         elif command == ipc.CMD_STOP:
-            self.quit()
+            # Let IPC send its reply before shutdown destroys the socket.
+            QTimer.singleShot(0, self.quit)
         return {
             "ok": True,
             "pid": os.getpid(),

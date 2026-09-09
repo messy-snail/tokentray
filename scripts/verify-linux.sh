@@ -42,7 +42,7 @@ section "Qt runtime libraries"
 MISSING=""
 for lib in libEGL.so.1 libGL.so.1 libxkbcommon.so.0 libdbus-1.so.3 \
            libfontconfig.so.1 libglib-2.0.so.0 libxcb-cursor.so.0; do
-    ldconfig -p 2>/dev/null | grep -q "$lib" || MISSING="$MISSING $lib"
+    ldconfig -p 2>/dev/null | grep -F "$lib" >/dev/null || MISSING="$MISSING $lib"
 done
 if [ -n "$MISSING" ]; then
     bad "missing:$MISSING"
@@ -54,7 +54,7 @@ fi
 section "Korean glyph coverage"
 # The font stack ends in Noto/DejaVu; stock Ubuntu ships no CJK, so item 17
 # fails with tofu unless fonts-noto-cjk is installed.
-if fc-list :lang=ko 2>/dev/null | grep -q .; then
+if fc-list :lang=ko 2>/dev/null | grep . >/dev/null; then
     ok "a Korean-capable font is installed ($(fc-list :lang=ko 2>/dev/null | wc -l) faces)"
 else
     bad "no font covers Korean - MANUAL_TEST item 17 will show tofu"
