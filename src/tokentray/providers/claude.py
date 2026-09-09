@@ -92,22 +92,24 @@ class ClaudeProvider(BaseProvider):
             raise SchemaError("five_hour.utilization missing")
 
         windows: list[UsageWindow] = [
-            _window("claude.5h", "window.5h", five_hour, WINDOW_5H),
+            _window("claude.5h", five_hour, WINDOW_5H),
         ]
         # A seven-day window is not guaranteed: some plans report only the 5h one.
-        for key, label, field, gate in (
-            ("claude.7d", "window.7d", "seven_day", False),
-            ("claude.7d_opus", "window.7d_opus", "seven_day_opus", True),
-            ("claude.7d_sonnet", "window.7d_sonnet", "seven_day_sonnet", True),
+        for key, qualifier, field, gate in (
+            ("claude.7d", "", "seven_day", False),
+            ("claude.7d_opus", "Opus", "seven_day_opus", True),
+            ("claude.7d_sonnet", "Sonnet", "seven_day_sonnet", True),
         ):
             block = body.get(field)
             if not isinstance(block, dict) or block.get("utilization") is None:
                 continue
             # Per-model sub-limits stay hidden until the model is actually used,
-            # otherwise every account shows two permanently-full rows.
+            # otherwise every account shows two permanently-full rows. They run
+            # the same seven days as the main window, so an unused one adds a
+            # row without adding anything to read.
             if gate and int(_as_float(block.get("utilization"))) <= 0:
                 continue
-            windows.append(_window(key, label, block, WINDOW_7D))
+            windows.append(_window(key, block, WINDOW_7D, qualifier=qualifier))
 
         return Snapshot(
             provider=self.id,
@@ -183,13 +185,15 @@ def _expiry_seconds(value: Any) -> float | None:
     return number / 1000.0 if number > 1e11 else number
 
 
-def _window(key: str, label_key: str, block: dict[str, Any], window_secs: int) -> UsageWindow:
+def _window(
+    key: str, block: dict[str, Any], window_secs: int, *, qualifier: str = ""
+) -> UsageWindow:
     return UsageWindow(
         key=key,
-        label_key=label_key,
         used_pct=_as_float(block.get("utilization")),
         resets_at=parse_timestamp(block.get("resets_at")),
         window_secs=window_secs,
+        qualifier=qualifier,
     )
 
 

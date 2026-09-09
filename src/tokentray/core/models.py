@@ -45,11 +45,14 @@ class UsageWindow:
     """
 
     key: str                       # stable alert key, e.g. "claude.5h"
-    label_key: str                 # i18n key, e.g. "window.5h"
     used_pct: float
     resets_at: datetime | None
     window_secs: int
-    label_args: dict[str, str] = field(default_factory=dict)
+    # What this window covers beyond its duration, when it is a sub-limit rather
+    # than the account's main quota: "Opus", "Sonnet", "Spark". Providers pass
+    # the short distinctive name; the display layer builds the whole label out
+    # of this plus window_secs, so the two of them never disagree about wording.
+    qualifier: str = ""
 
 
 @dataclass(frozen=True)

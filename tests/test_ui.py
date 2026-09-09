@@ -14,7 +14,7 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtCore import QSize  # noqa: E402
+from PySide6.QtCore import QSize, Qt  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLabel  # noqa: E402
 
@@ -41,7 +41,6 @@ def make_view(provider="claude", used=48.0, status=Status.OK, key="claude.5h"):
         [
             UsageWindow(
                 key=key,
-                label_key="window.5h",
                 used_pct=used,
                 resets_at=NOW + timedelta(hours=2),
                 window_secs=18_000,
@@ -348,6 +347,35 @@ class TestTray:
         dialog = IntegrationDialog(config, on_saved=lambda _settings: None, store=store)
         assert dialog.kind.count() == 4
         assert dialog.url.echoMode() == dialog.url.EchoMode.Password
+        dialog.close()
+
+    def test_integration_dialog_guides_every_service(self, qapp, tmp_path, monkeypatch):
+        from tokentray.ui.integration import IntegrationDialog
+
+        config = Config({}, tmp_path / "config.toml")
+        store = SecretStore(tmp_path / "secrets.toml")
+        monkeypatch.setattr(store, "_keyring", lambda: None)
+        dialog = IntegrationDialog(config, on_saved=lambda _settings: None, store=store)
+        steps = dialog.findChild(QLabel, "webhook-steps")
+        shape = dialog.findChild(QLabel, "webhook-url-shape")
+        assert steps is not None and shape is not None
+
+        seen = set()
+        for index in range(dialog.kind.count()):
+            dialog.kind.setCurrentIndex(index)
+            kind = str(dialog.kind.currentData())
+            # Every service gets real steps, not a fallback or a raw i18n key.
+            assert "<ol>" in steps.text() and "integration.steps" not in steps.text()
+            seen.add(steps.text())
+            # A generic webhook has no fixed URL shape, so that line goes away.
+            assert shape.isVisibleTo(dialog) is (kind != "generic")
+            if kind == "slack":
+                assert "hooks.slack.com/services/" in shape.text()
+            if kind == "discord":
+                # <id> must survive: as rich text Qt would eat it as a tag.
+                assert "<id>" in shape.text()
+                assert shape.textFormat() == Qt.TextFormat.PlainText
+        assert len(seen) == dialog.kind.count(), "two services share one set of steps"
         dialog.close()
 
     def test_retranslate_rebuilds_in_the_new_language(self, qapp):

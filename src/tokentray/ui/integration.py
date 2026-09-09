@@ -24,13 +24,19 @@ from ..core.config import Config
 from ..core.i18n import t
 from ..core.secrets import SecretStore, default_store
 from ..notify.configuration import DestinationSettings, current_settings, save_destination
-from ..notify.webhook import DeliveryResult, Webhook, validate_destination
+from ..notify.webhook import (
+    DeliveryResult,
+    Webhook,
+    destination_hint,
+    validate_destination,
+)
 from . import icons
 
 _LABELS = {"slack": "Slack", "discord": "Discord", "ntfy": "ntfy", "generic": "Generic"}
 _DOCS = {
     "slack": "https://api.slack.com/messaging/webhooks",
     "discord": "https://support.discord.com/hc/articles/228383668",
+    "ntfy": "https://docs.ntfy.sh/publish/",
 }
 
 
@@ -85,9 +91,21 @@ class IntegrationDialog(QDialog):
         root.addLayout(form)
 
         self.help = QLabel(self)
+        self.help.setObjectName("webhook-steps")
         self.help.setOpenExternalLinks(True)
         self.help.setWordWrap(True)
         root.addWidget(self.help)
+
+        self.url_shape = QLabel(self)
+        self.url_shape.setObjectName("webhook-url-shape")
+        self.url_shape.setWordWrap(True)
+        # Plain, not auto: the placeholders read as <id> and <topic>, and only
+        # Qt's guess that those are not HTML tags keeps them on screen.
+        self.url_shape.setTextFormat(Qt.TextFormat.PlainText)
+        self.url_shape.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        root.addWidget(self.url_shape)
 
         self.status = QLabel("", self)
         self.status.setObjectName("webhook-status")
@@ -129,12 +147,12 @@ class IntegrationDialog(QDialog):
 
     def _update_help(self) -> None:
         kind = self._selected_kind()
-        if kind in _DOCS:
-            self.help.setText(
-                t("integration.help", service=_LABELS[kind], url=_DOCS[kind])
-            )
-        else:
-            self.help.setText(t("integration.legacy_help"))
+        # Only the services with a vendor page take a {url}; a generic webhook
+        # has nobody's documentation to link to.
+        self.help.setText(t(f"integration.steps.{kind}", url=_DOCS.get(kind, "")))
+        shape = destination_hint(kind)
+        self.url_shape.setText(t("integration.url_shape", shape=shape) if shape else "")
+        self.url_shape.setVisible(bool(shape))
 
     def _test(self) -> None:
         kind = self._selected_kind()

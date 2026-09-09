@@ -40,6 +40,7 @@ toast landed in the right corner, whether Korean text fits its box.
 | 14 | "Pause alerts for 1 hour" silences toasts; the menu entry flips to "Resume". | ☐ | ☐ | ☐ |
 | 14a | Open "Notification integrations…", configure one Slack or Discord webhook, and confirm "Send test" reaches only that destination with the correct provider-style layout. | ☐ | ☐ | ☐ |
 | 14b | Change the selected service and confirm the old URL is cleared, a new URL is required, and saving applies without restarting tokentray. | ☐ | ☐ | ☐ |
+| 14c | Step through all four services and confirm each shows its own numbered steps, that the links open, and that the format line reads out the placeholders in full - `<id>`/`<token>` must not be swallowed as HTML. Generic shows no format line. | ☐ | ☐ | ☐ |
 
 ## Appearance
 
@@ -48,6 +49,8 @@ toast landed in the right corner, whether Korean text fits its box.
 | 15 | Switch the OS between light and dark, restart, and confirm the toast and panel follow. | ☐ | ☐ | ☐ |
 | 16 | Switch the language in the tray menu; the menu, panel and next toast are all translated. | ☐ | ☐ | ☐ |
 | 17 | Korean text renders without missing glyphs or clipping. | ☐ | ☐ | ☐ |
+| 17a | Window names use one scheme everywhere: `5 hours` / `7 days` / `7 days · Opus`, never a mix of `5-Hour Session` and `Codex 7d`. The tooltip is the only place abbreviations appear, and a sub-limit keeps its duration there (`5h·Spark`, not `Spark` twice). | ☐ | ☐ | ☐ |
+| 17b | The panel title names the plan as a product, e.g. `Codex (Pro Lite)` rather than `Codex (prolite)`. | ☐ | ☐ | ☐ |
 
 ## Lifecycle
 

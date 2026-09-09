@@ -45,6 +45,40 @@ CODEX_BODY = {
     "credits": {"has_credits": True, "balance": 4.5},
 }
 
+# Shaped after a real response from a weekly-only plan: the account's own quota
+# has no five-hour slot at all, and the only one in the payload belongs to a
+# per-model bucket that has not been touched yet.
+CODEX_SUBLIMIT_BODY = {
+    "plan_type": "prolite",
+    "rate_limit": {
+        "primary_window": {
+            "used_percent": 63.0,
+            "reset_at": 1_789_444_489,
+            "limit_window_seconds": 604800,
+        },
+        "secondary_window": None,
+    },
+    "code_review_rate_limit": None,
+    "additional_rate_limits": [
+        {
+            "limit_name": "GPT-5.3-Codex-Spark",
+            "metered_feature": "codex_bengalfox",
+            "rate_limit": {
+                "primary_window": {
+                    "used_percent": 0,
+                    "reset_at": 1_788_980_629,
+                    "limit_window_seconds": 18000,
+                },
+                "secondary_window": {
+                    "used_percent": 0,
+                    "reset_at": 1_789_567_429,
+                    "limit_window_seconds": 604800,
+                },
+            },
+        }
+    ],
+}
+
 
 @pytest.fixture
 def claude(config, cache, claude_credentials):
@@ -203,16 +237,75 @@ class TestCodexParsing:
     def test_windows_and_credits(self, codex):
         snapshot = codex.parse(CODEX_BODY)
         assert [w.key for w in snapshot.windows] == ["codex.primary", "codex.secondary"]
-        assert snapshot.windows[0].label_args == {"window": "7d"}
-        assert snapshot.windows[1].label_args == {"window": "5h"}
+        assert snapshot.windows[0].window_secs == 604800
+        assert snapshot.windows[1].window_secs == 18000
         assert snapshot.plan == "plus"
         assert snapshot.credits is not None and snapshot.credits.balance == 4.5
 
-    def test_weekly_only_plan_reports_one_window(self, codex):
+    def test_weekly_only_plan_with_no_sub_limits_reports_one_window(self, codex):
         body = {"rate_limit": {"primary_window": CODEX_BODY["rate_limit"]["primary_window"]}}
         snapshot = codex.parse(body)
         assert len(snapshot.windows) == 1
-        assert snapshot.windows[0].label_args == {"window": "7d"}
+        assert snapshot.windows[0].window_secs == 604800
+
+    def test_per_model_sub_limits_are_reported(self, codex):
+        snapshot = codex.parse(CODEX_SUBLIMIT_BODY)
+        assert [w.key for w in snapshot.windows] == [
+            "codex.primary",
+            "codex.codex_bengalfox.primary",
+            "codex.codex_bengalfox.secondary",
+        ]
+        spark = snapshot.windows[1]
+        assert spark.window_secs == 18000
+        assert spark.qualifier == "Spark"
+
+    def test_an_unused_sub_limit_is_still_shown(self, codex):
+        """Unlike Claude's, because it is the only place a five-hour cadence
+        shows up on a plan whose own quota is weekly-only."""
+        snapshot = codex.parse(CODEX_SUBLIMIT_BODY)
+        unused = [w for w in snapshot.windows if w.used_pct == 0]
+        assert [w.window_secs for w in unused] == [18000, 604800]
+
+    def test_code_review_limit_gets_its_own_key(self, codex):
+        body = dict(CODEX_SUBLIMIT_BODY)
+        body["code_review_rate_limit"] = {
+            "primary_window": {
+                "used_percent": 4.0,
+                "reset_at": 1_788_980_629,
+                "limit_window_seconds": 604800,
+            }
+        }
+        snapshot = codex.parse(body)
+        review = [w for w in snapshot.windows if w.key.startswith("codex.code_review")]
+        assert [w.key for w in review] == ["codex.code_review.primary"]
+        assert review[0].qualifier == "Code Review"
+
+    @pytest.mark.parametrize(
+        "extra",
+        [None, "nonsense", [], [None], [{}], [{"rate_limit": None}], [{"rate_limit": {}}]],
+    )
+    def test_a_malformed_sub_limit_block_is_skipped_not_raised(self, codex, extra):
+        body = dict(CODEX_SUBLIMIT_BODY)
+        body["additional_rate_limits"] = extra
+        snapshot = codex.parse(body)
+        assert [w.key for w in snapshot.windows] == ["codex.primary"]
+
+    def test_a_sub_limit_without_a_feature_id_falls_back_to_its_name(self, codex):
+        body = dict(CODEX_SUBLIMIT_BODY)
+        body["additional_rate_limits"] = [
+            {
+                "limit_name": "GPT-5.3-Codex-Spark",
+                "rate_limit": {
+                    "primary_window": {
+                        "used_percent": 1.0,
+                        "reset_at": 1_788_980_629,
+                        "limit_window_seconds": 18000,
+                    }
+                },
+            }
+        ]
+        snapshot = codex.parse(body)
+        assert snapshot.windows[1].key == "codex.gpt_5_3_codex_spark.primary"
 
     def test_missing_rate_limit_is_a_schema_change(self, codex):
         with pytest.raises(SchemaError):

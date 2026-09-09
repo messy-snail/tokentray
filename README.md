@@ -31,10 +31,13 @@ codebase.
 
 ## What it shows
 
-- **Claude Code** - 5-hour session, 7-day window, per-model Opus/Sonnet
-  sub-limits once you use them, and pay-as-you-go Extra Usage.
+- **Claude Code** - 5 hours, 7 days, per-model Opus/Sonnet sub-limits once you
+  use them, and pay-as-you-go Extra Usage.
 - **Codex** - whichever rate-limit windows your plan actually reports (a
-  weekly-only plan shows one `7d` row, not a mislabelled `5h` one), plus credits.
+  weekly-only plan shows one 7-day row, not a mislabelled 5-hour one), the
+  per-model sub-limits, plus credits. Codex sub-limits are shown even at 0%,
+  unlike Claude's: a plan whose own quota is weekly-only still gets a 5-hour
+  limit here, and that row is the only place the shorter cadence is visible.
 - For every window: remaining %, time to reset, **pace** (1.0x means you will
   land exactly at zero when it resets) and a burnout projection.
 

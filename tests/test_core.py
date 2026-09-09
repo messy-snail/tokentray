@@ -155,7 +155,6 @@ def _snapshot(**kwargs) -> Snapshot:
         windows=[
             UsageWindow(
                 key="claude.5h",
-                label_key="window.5h",
                 used_pct=48.0,
                 resets_at=NOW + timedelta(hours=2),
                 window_secs=18_000,
@@ -171,11 +170,16 @@ class TestView:
     def test_rows_carry_localized_labels(self):
         i18n.set_language("ko")
         built = view.build_view(_snapshot(), NOW)
-        assert built.rows[0].label == "5시간 세션"
+        assert built.rows[0].label == "5시간"
         assert built.rows[0].remaining_text == "52% 남음"
 
     def test_title_includes_the_plan(self):
-        assert view.build_view(_snapshot(), NOW).title == "Claude Code (max)"
+        assert view.build_view(_snapshot(), NOW).title == "Claude Code (Max)"
+
+    def test_an_unknown_plan_code_is_shown_as_it_arrived(self):
+        # Better an unrecognised code than a plausible-looking wrong name.
+        built = view.build_view(_snapshot(plan="turbolite"), NOW)
+        assert built.title == "Claude Code (turbolite)"
 
     def test_actionable_status_produces_a_message_and_no_rows(self):
         built = view.build_view(_snapshot(status=Status.EXPIRED, windows=[]), NOW)
@@ -190,7 +194,6 @@ class TestView:
             windows=[
                 UsageWindow(
                     key="claude.5h",
-                    label_key="window.5h",
                     used_pct=48.0,
                     resets_at=NOW - timedelta(minutes=5),
                     window_secs=18_000,
@@ -198,6 +201,68 @@ class TestView:
             ],
         )
         assert view.build_view(stale, NOW).rows[0].remaining_text == "~0%"
+
+    def test_both_providers_name_the_same_duration_the_same_way(self):
+        i18n.set_language("ko")
+        claude = view.build_view(_snapshot(), NOW)
+        codex = view.build_view(
+            _snapshot(
+                provider="codex",
+                plan="prolite",
+                windows=[
+                    UsageWindow("codex.primary", 48.0, NOW + timedelta(hours=2), 18_000)
+                ],
+            ),
+            NOW,
+        )
+        assert claude.rows[0].label == codex.rows[0].label == "5시간"
+        assert codex.title == "Codex (Pro Lite)"
+
+    def test_a_sub_limit_is_named_by_what_it_covers(self):
+        i18n.set_language("ko")
+        built = view.build_view(
+            _snapshot(
+                windows=[
+                    UsageWindow(
+                        "claude.7d_opus",
+                        20.0,
+                        NOW + timedelta(days=3),
+                        604_800,
+                        qualifier="Opus",
+                    )
+                ]
+            ),
+            NOW,
+        )
+        assert built.rows[0].label == "7일 · Opus"
+        assert view.tooltip([built]).endswith("7d·Opus 80%")
+
+    def test_two_windows_of_one_sub_limit_stay_distinct_in_the_tooltip(self):
+        # One model can be metered over two windows at once. Naming tooltip rows
+        # by the qualifier alone printed "Spark 100% Spark 100%".
+        built = view.build_view(
+            _snapshot(
+                provider="codex",
+                windows=[
+                    UsageWindow(
+                        "codex.spark.primary",
+                        0.0,
+                        NOW + timedelta(hours=1),
+                        18_000,
+                        qualifier="Spark",
+                    ),
+                    UsageWindow(
+                        "codex.spark.secondary",
+                        0.0,
+                        NOW + timedelta(days=3),
+                        604_800,
+                        qualifier="Spark",
+                    ),
+                ],
+            ),
+            NOW,
+        )
+        assert view.tooltip([built]) == "CX 5h·Spark 100% 7d·Spark 100%"
 
     def test_tooltip_fits_the_windows_limit(self):
         views = [view.build_view(_snapshot(), NOW)] * 4
@@ -207,8 +272,8 @@ class TestView:
         built = view.build_view(
             _snapshot(
                 windows=[
-                    UsageWindow("claude.5h", "window.5h", 10.0, NOW + timedelta(hours=1), 18_000),
-                    UsageWindow("claude.7d", "window.7d", 95.0, NOW + timedelta(days=3), 604_800),
+                    UsageWindow("claude.5h", 10.0, NOW + timedelta(hours=1), 18_000),
+                    UsageWindow("claude.7d", 95.0, NOW + timedelta(days=3), 604_800),
                 ]
             ),
             NOW,

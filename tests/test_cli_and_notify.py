@@ -39,7 +39,7 @@ class TestStatusCommand:
             respx.get(CODEX_URL).mock(return_value=httpx.Response(404))
             result = runner.invoke(cli_app, ["status", "--local"])
         assert result.exit_code == 0
-        assert "5-Hour Session" in result.stdout
+        assert "5 hours" in result.stdout
         assert "52% remaining" in result.stdout
 
     def test_exits_non_zero_when_nothing_is_configured(self, isolated_config):

@@ -11,10 +11,25 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from . import compute, i18n
-from .models import Snapshot, Status
+from .models import Snapshot, Status, UsageWindow
 
 PROVIDER_NAMES = {"claude": "Claude Code", "codex": "Codex"}
 PROVIDER_ABBR = {"claude": "CC", "codex": "CX"}
+# Both APIs report a plan as a lowercase code. These are product names, not
+# prose, so they live here rather than in i18n - same as PROVIDER_NAMES. An
+# unmapped code is shown as it arrived: title-casing "prolite" into "Prolite"
+# would read as a real product name and hide the fact that we do not know it.
+PLAN_NAMES = {
+    "prolite": "Pro Lite",
+    "plus": "Plus",
+    "pro": "Pro",
+    "max": "Max",
+    "team": "Team",
+    "business": "Business",
+    "enterprise": "Enterprise",
+    "edu": "Edu",
+    "free": "Free",
+}
 # Registry order, which every surface renders unsorted: the tray icon draws the
 # first entry as its outermost ring, the tooltip and the panel list it first.
 PROVIDER_ORDER = ("claude", "codex")
@@ -64,7 +79,11 @@ class ProviderView:
 def build_view(snapshot: Snapshot, now: datetime | None = None) -> ProviderView:
     now = now or datetime.now(timezone.utc)
     name = PROVIDER_NAMES.get(snapshot.provider, snapshot.provider)
-    title = i18n.t("fmt.plan", provider=name, plan=snapshot.plan) if snapshot.plan else name
+    if snapshot.plan:
+        plan = PLAN_NAMES.get(snapshot.plan.strip().lower(), snapshot.plan)
+        title = i18n.t("fmt.plan", provider=name, plan=plan)
+    else:
+        title = name
 
     view = ProviderView(
         provider=snapshot.provider,
@@ -78,7 +97,7 @@ def build_view(snapshot: Snapshot, now: datetime | None = None) -> ProviderView:
 
     for window in snapshot.windows:
         stats = compute.derive(window, now)
-        label = i18n.t(window.label_key, **window.label_args)
+        label = window_label(window)
         # A stale reading whose window already reset is not "62% left", it is
         # unknown-but-probably-refilled. Say that rather than lie precisely.
         if snapshot.window_reset_pending and stats.secs_until_reset is not None and stats.secs_until_reset <= 0:
@@ -195,9 +214,31 @@ def tooltip(views: list[ProviderView], limit: int = 127) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+def window_label(window: UsageWindow) -> str:
+    """Full name for the panel, the CLI and notifications: ``7 days · Opus``.
+
+    Built from the reported duration rather than a per-provider phrase, so the
+    two providers cannot end up calling the same seven days different things.
+    """
+    units = compute.window_units(window.window_secs)
+    if units is None:
+        name = i18n.t("window.unknown")
+    else:
+        count, unit = units
+        key = "window.days" if unit == "d" else "window.hours"
+        name = i18n.t(f"{key}_one" if count == 1 else key, n=count)
+    if not window.qualifier:
+        return name
+    return i18n.t("window.qualified", window=name, name=window.qualifier)
+
+
 def _short_label(row: WindowRow) -> str:
-    """Abbreviate a window label for the tooltip (``5h``, ``7d``, ``Opus``)."""
-    key = row.key.rsplit(".", 1)[-1]
-    return {"5h": "5h", "7d": "7d", "7d_opus": "Opus", "7d_sonnet": "Sonnet"}.get(
-        key, row.label.replace("Codex ", "")
-    )
+    """Tooltip form: ``5h``, ``7d``, ``5h·Spark``.
+
+    The duration alone is not enough - one model can be metered over two
+    windows at once, and dropping the duration would print the same thing
+    twice - so a sub-limit keeps both halves, just tighter than the panel's.
+    """
+    window = row.stats.window
+    abbr = compute.window_abbr(window.window_secs)
+    return f"{abbr}·{window.qualifier}" if window.qualifier else abbr

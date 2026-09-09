@@ -11,11 +11,12 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ..core.compute import codex_window_label, parse_timestamp
+from ..core.compute import parse_timestamp
 from ..core.models import Credits, Snapshot, Status, UsageWindow
 from ..core.paths import atomic_write_json
 from ..core.secrets import (
@@ -175,10 +176,29 @@ class CodexProvider(BaseProvider):
         if not isinstance(primary, dict) or primary.get("used_percent") is None:
             raise SchemaError("rate_limit.primary_window.used_percent missing")
 
-        windows = [_window("codex.primary", primary)]
-        secondary = rate_limit.get("secondary_window")
-        if isinstance(secondary, dict) and secondary.get("used_percent") is not None:
-            windows.append(_window("codex.secondary", secondary))
+        windows = _windows_from("codex", rate_limit)
+        # Sub-limits scoped to one model or feature. Unlike Claude's per-model
+        # rows these are kept even at 0%: they carry a cadence the main bucket
+        # does not have - a weekly-only plan still gets a five-hour limit here -
+        # so an unused one is the only place that fact is visible.
+        for index, entry in enumerate(_as_list(body.get("additional_rate_limits"))):
+            if not isinstance(entry, dict):
+                continue
+            slug = _slug(entry.get("metered_feature"), entry.get("limit_name"), index)
+            windows.extend(
+                _windows_from(
+                    f"codex.{slug}",
+                    entry.get("rate_limit"),
+                    qualifier=_short_name(entry.get("limit_name")),
+                )
+            )
+        windows.extend(
+            _windows_from(
+                "codex.code_review",
+                body.get("code_review_rate_limit"),
+                qualifier="Code Review",
+            )
+        )
 
         return Snapshot(
             provider=self.id,
@@ -222,19 +242,68 @@ def _from_file(path: Path) -> CodexCreds | None:
     )
 
 
-def _window(key: str, block: dict[str, Any]) -> UsageWindow:
+def _windows_from(
+    prefix: str, rate_limit: Any, *, qualifier: str = ""
+) -> list[UsageWindow]:
+    """Both slots of one ``rate_limit`` block, skipping the ones not reported.
+
+    Every bucket in the response has this shape - the account's own quota, each
+    per-model sub-limit, code review - so they all come through here and get
+    keys that differ only by prefix.
+    """
+    if not isinstance(rate_limit, dict):
+        return []
+    windows = []
+    for slot in ("primary", "secondary"):
+        block = rate_limit.get(f"{slot}_window")
+        if not isinstance(block, dict) or block.get("used_percent") is None:
+            continue
+        windows.append(_window(f"{prefix}.{slot}", block, qualifier=qualifier))
+    return windows
+
+
+def _window(key: str, block: dict[str, Any], *, qualifier: str = "") -> UsageWindow:
     try:
         window_secs = int(block.get("limit_window_seconds") or 0)
     except (TypeError, ValueError):
         window_secs = 0
     return UsageWindow(
         key=key,
-        label_key="window.codex",
         used_pct=_as_float(block.get("used_percent")),
         resets_at=parse_timestamp(block.get("reset_at")),
         window_secs=window_secs,
-        label_args={"window": codex_window_label(window_secs)},
+        qualifier=qualifier,
     )
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _slug(feature: Any, limit_name: Any, index: int) -> str:
+    """Stable key fragment for one sub-limit.
+
+    This ends up in the alert key, which is what alert state is stored under, so
+    it has to survive restarts and reorderings. ``metered_feature`` is the
+    API's own identifier and the best candidate; the index is a last resort that
+    only stays stable while the list does.
+    """
+    for candidate in (feature, limit_name):
+        if isinstance(candidate, str) and candidate.strip():
+            return re.sub(r"[^a-z0-9]+", "_", candidate.strip().lower()).strip("_")
+    return f"extra{index}"
+
+
+def _short_name(limit_name: Any) -> str:
+    """``GPT-5.3-Codex-Spark`` -> ``Spark``.
+
+    Claude labels its sub-limits ``Opus`` and ``Sonnet`` rather than the full
+    model id; the distinctive tail is what a person recognises, and it is what
+    fits in a tooltip Windows cuts off at 128 characters.
+    """
+    if not isinstance(limit_name, str) or not limit_name.strip():
+        return ""
+    return limit_name.strip().rsplit("-", 1)[-1]
 
 
 def _credits(block: Any) -> Credits | None:

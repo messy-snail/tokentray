@@ -13,7 +13,7 @@ NOW = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
 def window(used: float, *, resets_in: float | None, window_secs: int = compute.WINDOW_5H) -> UsageWindow:
     resets_at = NOW + timedelta(seconds=resets_in) if resets_in is not None else None
     return UsageWindow(
-        key="test", label_key="window.5h", used_pct=used, resets_at=resets_at, window_secs=window_secs
+        key="test", used_pct=used, resets_at=resets_at, window_secs=window_secs
     )
 
 
@@ -110,7 +110,7 @@ class TestFormatting:
         assert text and ":" in text and text[0].isdigit()
 
 
-class TestCodexWindowLabel:
+class TestWindowAbbr:
     @pytest.mark.parametrize(
         "seconds,label",
         [
@@ -126,7 +126,7 @@ class TestCodexWindowLabel:
         ],
     )
     def test_labels_follow_reported_duration(self, seconds, label):
-        assert compute.codex_window_label(seconds) == label
+        assert compute.window_abbr(seconds) == label
 
 
 class TestParseTimestamp:

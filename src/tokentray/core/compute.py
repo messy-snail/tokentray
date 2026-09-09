@@ -134,23 +134,29 @@ def progress_bar(remaining: float, width: int = 20) -> str:
     return BAR_FILLED * filled + BAR_EMPTY * (width - filled)
 
 
-def codex_window_label(window_secs: int | None) -> str:
-    """Derive ``5h`` / ``7d`` / ``12h`` from the API-reported window length.
+def window_units(window_secs: int | None) -> tuple[int, str] | None:
+    """Split an API-reported window length into ``(count, "h" | "d")``.
 
-    Upstream hardcoded ``5h``/``7d`` rows and mislabelled weekly-only plans; this
-    follows whatever the API actually reports.
+    Upstream hardcoded 5h/7d rows and mislabelled weekly-only plans; deriving
+    the units instead means a 12h or 3d window names itself correctly. Returns
+    None for a length that is neither whole hours nor whole days, which is the
+    caller's cue to fall back to an unnamed limit.
+
+    Days are tried first so a week reads as ``7d`` rather than ``168h``.
     """
     if not window_secs or window_secs <= 0:
-        return "limit"
-    if window_secs == WINDOW_5H:
-        return "5h"
-    if window_secs == WINDOW_7D:
-        return "7d"
+        return None
     if window_secs % 86_400 == 0:
-        return f"{window_secs // 86_400}d"
+        return window_secs // 86_400, "d"
     if window_secs % 3_600 == 0:
-        return f"{window_secs // 3_600}h"
-    return "limit"
+        return window_secs // 3_600, "h"
+    return None
+
+
+def window_abbr(window_secs: int | None) -> str:
+    """Tight form for the tray tooltip, which Windows truncates at 128 chars."""
+    units = window_units(window_secs)
+    return f"{units[0]}{units[1]}" if units else "limit"
 
 
 @dataclass(frozen=True)

@@ -20,11 +20,14 @@ LANGUAGE_NAMES: dict[str, str] = {
 STRINGS: dict[str, dict[str, str]] = {
     "en": {
         # window labels
-        "window.5h": "5-Hour Session",
-        "window.7d": "7-Day Window",
-        "window.7d_opus": "7-Day Opus",
-        "window.7d_sonnet": "7-Day Sonnet",
-        "window.codex": "Codex {window}",
+        # One naming scheme for every window either provider reports: the
+        # duration is the name, and a sub-limit adds what it covers.
+        "window.hours": "{n} hours",
+        "window.hours_one": "{n} hour",
+        "window.days": "{n} days",
+        "window.days_one": "{n} day",
+        "window.qualified": "{window} · {name}",
+        "window.unknown": "Limit",
         # field labels
         "label.remaining": "remaining",
         "label.refills": "Refills in",
@@ -80,8 +83,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "integration.service": "Service",
         "integration.url": "Webhook URL",
         "integration.saved_url": "Saved securely — leave blank to keep it",
-        "integration.help": "Create a {service} incoming webhook, paste its URL here, and set the tokentray icon in that service. <a href=\"{url}\">Setup guide</a>",
-        "integration.legacy_help": "ntfy and generic HTTPS webhooks remain available for existing setups.",
+        # Numbered steps rather than a screenshot: nothing here is loaded from
+        # disk in a packaged build, and a picture of someone else's settings
+        # page goes stale the next time they redesign it.
+        "integration.steps.slack": "<ol><li>Open <a href=\"{url}\">Slack incoming webhooks</a> and create or pick an app for your workspace.</li><li>Turn on <b>Incoming Webhooks</b>, then <b>Add New Webhook to Workspace</b> and choose a channel.</li><li>Copy the webhook URL and paste it above.</li><li>In that app's <b>Basic Information</b>, set the tokentray icon so alerts are recognisable.</li></ol>",
+        "integration.steps.discord": "<ol><li>In the target server, open <b>Server Settings</b> → <b>Integrations</b> → <b>Webhooks</b>.</li><li>Choose <b>New Webhook</b>, pick the channel, and name it tokentray.</li><li>Use <b>Copy Webhook URL</b> and paste it above.</li><li>Set the avatar on the same screen. <a href=\"{url}\">Discord's guide</a></li></ol>",
+        "integration.steps.ntfy": "<ol><li>Pick a topic name that is hard to guess - anyone who knows it can read your alerts.</li><li>Subscribe to it in the ntfy app or at ntfy.sh.</li><li>Paste the topic URL above. <a href=\"{url}\">Publishing docs</a></li></ol>",
+        "integration.steps.generic": "<ol><li>Point this at any HTTPS endpoint that accepts a JSON POST.</li><li>Each alert arrives as one request with the title, body and remaining percentage.</li></ol>",
+        "integration.url_shape": "Format: {shape}",
         "integration.test": "Send test",
         "integration.save": "Save",
         "integration.testing": "Sending a test…",
@@ -105,11 +114,12 @@ STRINGS: dict[str, dict[str, str]] = {
     },
     "ko": {
         # window labels
-        "window.5h": "5시간 세션",
-        "window.7d": "7일 윈도우",
-        "window.7d_opus": "7일 Opus",
-        "window.7d_sonnet": "7일 Sonnet",
-        "window.codex": "Codex {window}",
+        "window.hours": "{n}시간",
+        "window.hours_one": "{n}시간",
+        "window.days": "{n}일",
+        "window.days_one": "{n}일",
+        "window.qualified": "{window} · {name}",
+        "window.unknown": "한도",
         # field labels
         "label.remaining": "남음",
         "label.refills": "리셋까지",
@@ -165,8 +175,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "integration.service": "서비스",
         "integration.url": "웹훅 URL",
         "integration.saved_url": "안전하게 저장됨 — 유지하려면 비워 두세요",
-        "integration.help": "{service} 수신 웹훅을 만들고 URL을 붙여넣으세요. 서비스 설정에서 tokentray 아이콘도 지정할 수 있습니다. <a href=\"{url}\">설정 안내</a>",
-        "integration.legacy_help": "기존 ntfy와 일반 HTTPS 웹훅 설정도 계속 사용할 수 있습니다.",
+        "integration.steps.slack": "<ol><li><a href=\"{url}\">Slack 수신 웹훅</a> 페이지를 열고 워크스페이스에 쓸 앱을 만들거나 고릅니다.</li><li><b>Incoming Webhooks</b>를 켜고 <b>Add New Webhook to Workspace</b>에서 채널을 선택합니다.</li><li>웹훅 URL을 복사해 위에 붙여넣습니다.</li><li>같은 앱의 <b>Basic Information</b>에서 tokentray 아이콘을 지정하면 알림을 알아보기 쉽습니다.</li></ol>",
+        "integration.steps.discord": "<ol><li>보낼 서버에서 <b>서버 설정</b> → <b>연동</b> → <b>웹후크</b>를 엽니다.</li><li><b>새 웹후크</b>를 만들고 채널을 고른 뒤 이름을 tokentray로 합니다.</li><li><b>웹후크 URL 복사</b>를 눌러 위에 붙여넣습니다.</li><li>같은 화면에서 아바타도 지정할 수 있습니다. <a href=\"{url}\">Discord 안내</a></li></ol>",
+        "integration.steps.ntfy": "<ol><li>추측하기 어려운 토픽 이름을 정합니다 — 이름을 아는 사람은 누구나 알림을 볼 수 있습니다.</li><li>ntfy 앱이나 ntfy.sh에서 그 토픽을 구독합니다.</li><li>토픽 URL을 위에 붙여넣습니다. <a href=\"{url}\">발행 문서</a></li></ol>",
+        "integration.steps.generic": "<ol><li>JSON POST를 받는 HTTPS 엔드포인트면 무엇이든 됩니다.</li><li>알림 하나가 제목, 본문, 남은 비율을 담은 요청 하나로 전달됩니다.</li></ol>",
+        "integration.url_shape": "형식: {shape}",
         "integration.test": "테스트 전송",
         "integration.save": "저장",
         "integration.testing": "테스트 알림을 보내는 중…",

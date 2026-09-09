@@ -28,7 +28,6 @@ def make_view(
         windows = [
             UsageWindow(
                 key=key,
-                label_key="window.5h",
                 used_pct=used,
                 resets_at=NOW_DT + timedelta(seconds=resets_in) if resets_in is not None else None,
                 window_secs=window_secs,

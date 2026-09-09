@@ -232,6 +232,25 @@ def validate_destination(kind: str, url: str) -> str:
     return ""
 
 
+# Deliberately next to validate_destination: this is the same knowledge phrased
+# for a person, and the two drifting apart would mean telling someone to paste a
+# URL the validator then rejects.
+DESTINATION_HINTS = {
+    "slack": "https://hooks.slack.com/services/T…/B…/…",
+    "discord": "https://discord.com/api/webhooks/<id>/<token>",
+    "ntfy": "https://ntfy.sh/<topic>",
+}
+
+
+def destination_hint(kind: str) -> str:
+    """The URL shape ``validate_destination`` will accept for ``kind``.
+
+    Empty for a generic webhook, which is any HTTPS endpoint taking a JSON POST
+    and so has no shape to show.
+    """
+    return DESTINATION_HINTS.get(kind, "")
+
+
 def _message(event: AlertEvent) -> str:
     detail = event.detail
     if not detail and event.row is not None:
