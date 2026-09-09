@@ -7,15 +7,19 @@ visual pass is the manual checklist in MANUAL_TEST.md.
 
 from __future__ import annotations
 
+import math
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
 pytest.importorskip("PySide6")
 
+from PySide6.QtCore import QSize  # noqa: E402
+from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from tokentray.core import i18n  # noqa: E402
+from tokentray.core.compute import TIER_COLORS  # noqa: E402
 from tokentray.core.alerts import AlertEvent  # noqa: E402
 from tokentray.core.models import Snapshot, Status, UsageWindow  # noqa: E402
 from tokentray.core.view import build_view  # noqa: E402
@@ -60,6 +64,86 @@ def make_event(remaining=25, tier="orange", priority="high"):
     )
 
 
+# Pixel probes run at 64px: at tray sizes a ring is only a couple of pixels wide,
+# so antialiasing blends the sample with whatever is next to it.
+PROBE_SIZE = 64
+
+
+def probe(pixmap, radius, degrees, size=PROBE_SIZE):
+    """The colour `radius` px from the centre, `degrees` clockwise from 12 o'clock."""
+    centre = size / 2.0
+    x = centre + radius * math.sin(math.radians(degrees))
+    y = centre - radius * math.cos(math.radians(degrees))
+    return pixmap.toImage().pixelColor(int(x), int(y))
+
+
+def assert_tier(color, tier):
+    want = QColor(TIER_COLORS[tier])
+    assert color.alpha() > 200, f"expected opaque {tier}, got {color.name()}"
+    for got, expected in zip(
+        (color.red(), color.green(), color.blue()),
+        (want.red(), want.green(), want.blue()),
+    ):
+        assert abs(got - expected) <= 6, f"expected {tier}, got {color.name()}"
+
+
+def assert_track(color):
+    # Translucent in both themes - light is 15% black, dark 13% white.
+    assert 0 < color.alpha() < 80, f"expected the track, got alpha {color.alpha()}"
+
+
+def assert_empty(color):
+    assert color.alpha() == 0, f"expected nothing drawn, got {color.name()}"
+
+
+class TestRingGeometry:
+    """Layout arithmetic, checked without a painter."""
+
+    @pytest.mark.parametrize("size", icons.ICON_SIZES + (128, 256, 512, 1024))
+    def test_single_ring_matches_the_legacy_geometry(self, size):
+        # The packaged .icns/.ico/.png are rendered from this code, so a lone
+        # ring has to keep the exact geometry it shipped with or every asset
+        # silently changes underneath the bundle.
+        stroke = size * 0.17
+        band = icons.ring_bands(size, 1)[0]
+        assert band.stroke == pytest.approx(stroke)
+        assert band.radius == pytest.approx(
+            size / 2 - max(1.0, size * 0.06) - stroke / 2
+        )
+
+    @pytest.mark.parametrize("size", icons.ICON_SIZES + (128, 256, 512, 1024))
+    @pytest.mark.parametrize("count", range(1, icons.MAX_RINGS + 1))
+    def test_rings_fit_inside_the_pixmap(self, size, count):
+        bands = icons.ring_bands(size, count)
+        assert bands[0].radius + bands[0].stroke / 2 <= size / 2 + 1e-9
+        assert bands[-1].radius - bands[-1].stroke / 2 >= -1e-9
+
+    @pytest.mark.parametrize("size", icons.ICON_SIZES)
+    @pytest.mark.parametrize("count", range(2, icons.MAX_RINGS + 1))
+    def test_rings_never_overlap(self, size, count):
+        bands = icons.ring_bands(size, count)
+        for outer, inner in zip(bands, bands[1:]):
+            clearance = (outer.radius - outer.stroke / 2) - (
+                inner.radius + inner.stroke / 2
+            )
+            assert clearance >= icons._MIN_GAP - 1e-9
+
+    def test_strokes_stay_legible_at_sixteen(self):
+        # 16px is the smallest tray slot; below ~1.6px a ring antialiases away.
+        assert all(band.stroke >= 1.6 for band in icons.ring_bands(16, 2))
+
+    def test_ring_count_is_capped(self):
+        assert len(icons.ring_bands(64, 9)) == icons.MAX_RINGS
+
+    def test_zero_providers_still_gets_one_band(self):
+        assert len(icons.ring_bands(16, 0)) == 1
+
+    @pytest.mark.parametrize("count", range(1, icons.MAX_RINGS + 1))
+    def test_stroke_grows_with_size(self, count):
+        strokes = [icons.ring_bands(s, count)[0].stroke for s in icons.ICON_SIZES]
+        assert strokes == sorted(strokes)
+
+
 class TestIcons:
     @pytest.mark.parametrize("size", icons.ICON_SIZES)
     def test_every_size_renders(self, qapp, size):
@@ -81,6 +165,87 @@ class TestIcons:
 
     def test_exhausted_window_renders(self, qapp):
         assert not icons.render_pixmap([make_view(used=100.0)], 16).isNull()
+
+    def test_two_providers_paint_two_distinct_rings(self, qapp):
+        # Claude 80% (green) outside, Codex 30% (orange) inside. Two providers
+        # at the same tier used to merge into one unbroken ring; separate radii
+        # and separate sweeps are what stops that.
+        views = [make_view(used=20.0), make_view(provider="codex", used=70.0)]
+        pixmap = icons.render_pixmap(views, PROBE_SIZE)
+        outer, inner = icons.ring_bands(PROBE_SIZE, 2)
+
+        assert_tier(probe(pixmap, outer.radius, 45), "green")
+        assert_tier(probe(pixmap, inner.radius, 45), "orange")
+        assert_tier(probe(pixmap, outer.radius, 180), "green")  # 80% reaches past 6
+        assert_track(probe(pixmap, inner.radius, 180))          # 30% does not
+        assert_track(probe(pixmap, outer.radius, 300))
+        assert_track(probe(pixmap, inner.radius, 300))
+
+    def test_dataless_provider_keeps_its_ring_slot(self, qapp):
+        # Filtering the empty provider out would move the other one, so the same
+        # arc length would mean a different number from one poll to the next.
+        inner = icons.ring_bands(PROBE_SIZE, 2)[1]
+        alone = icons.render_pixmap([make_view()], PROBE_SIZE)
+        paired = icons.render_pixmap(
+            [make_view(), make_view(provider="codex", status=Status.NOT_CONFIGURED)],
+            PROBE_SIZE,
+        )
+        assert_empty(probe(alone, inner.radius, 45))
+        assert_track(probe(paired, inner.radius, 45))
+
+    def test_single_provider_uses_the_full_outer_ring(self, qapp):
+        pixmap = icons.render_pixmap([make_view(used=20.0)], PROBE_SIZE)
+        band = icons.ring_bands(PROBE_SIZE, 1)[0]
+        assert_tier(probe(pixmap, band.radius, 45), "green")
+        assert_track(probe(pixmap, band.radius, 300))
+        assert_empty(probe(pixmap, 3, 45))  # the hole stays a hole
+
+    def test_arc_drains_clockwise_from_twelve(self, qapp):
+        pixmap = icons.render_pixmap([make_view(used=50.0)], PROBE_SIZE)
+        band = icons.ring_bands(PROBE_SIZE, 1)[0]
+        for filled in (10, 170):
+            assert_tier(probe(pixmap, band.radius, filled), "orange")
+        for drained in (190, 350):
+            assert_track(probe(pixmap, band.radius, drained))
+
+    def test_full_quota_fills_the_whole_ring(self, qapp):
+        views = [make_view(used=0.0), make_view(provider="codex", used=0.0)]
+        pixmap = icons.render_pixmap(views, PROBE_SIZE)
+        for band in icons.ring_bands(PROBE_SIZE, 2):
+            for degrees in (5, 90, 180, 270, 355):
+                assert_tier(probe(pixmap, band.radius, degrees), "green")
+
+    def test_exhausted_ring_is_distinguishable_from_no_data(self, qapp):
+        # Nothing left and never configured both leave a bare track otherwise,
+        # and they want opposite reactions from the user.
+        pixmap = icons.render_pixmap([make_view(used=100.0)], PROBE_SIZE)
+        band = icons.ring_bands(PROBE_SIZE, 1)[0]
+        assert_tier(probe(pixmap, band.radius, 2), "red")
+        assert_track(probe(pixmap, band.radius, 45))
+
+    def test_no_data_anywhere_still_shows_the_idle_tick(self, qapp):
+        views = [
+            make_view(status=Status.NOT_CONFIGURED),
+            make_view(provider="codex", status=Status.NOT_CONFIGURED),
+        ]
+        pixmap = icons.render_pixmap(views, PROBE_SIZE)
+        outer, inner = icons.ring_bands(PROBE_SIZE, 2)
+
+        tick = probe(pixmap, outer.radius, 10)
+        assert tick.alpha() > 200
+        channels = (tick.red(), tick.green(), tick.blue())
+        assert max(channels) - min(channels) <= 20  # muted grey, not a tier colour
+        assert_track(probe(pixmap, inner.radius, 10))
+
+    def test_retina_request_lands_on_an_exact_raster(self, qapp):
+        # 22pt at 2x is 44 physical pixels. Without that exact size in the set,
+        # Qt downsamples the 48px raster and blurs the gap between the rings.
+        assert 44 in icons.ICON_SIZES
+        views = [make_view(), make_view(provider="codex", used=70.0)]
+        got = icons.build_icon(views).pixmap(QSize(22, 22), 2.0)
+        assert got.width() == 44
+        assert got.devicePixelRatio() == 2.0
+        assert got.toImage() == icons.render_pixmap(views, 44).toImage()
 
 
 class TestTheme:

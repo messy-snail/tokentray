@@ -302,3 +302,13 @@ class TestRegistry:
         config = Config({"codex": {"enabled": False}})
         ids = [p.id for p in build_providers(config, cache)]
         assert ids == ["claude"]
+
+
+def test_registry_order_matches_the_documented_ring_order():
+    # The tray icon draws views in the order app.py hands them over - outermost
+    # ring first - and nothing sorts along the way. If a provider is added or
+    # reordered here, PROVIDER_ORDER has to move with it.
+    from tokentray.core.view import PROVIDER_ORDER
+    from tokentray.providers import PROVIDER_CLASSES
+
+    assert tuple(cls.id for cls in PROVIDER_CLASSES) == PROVIDER_ORDER
