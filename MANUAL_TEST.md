@@ -19,7 +19,9 @@ toast landed in the right corner, whether Korean text fits its box.
 |---|---|---|---|---|
 | 1 | Icon appears within ~10 s of launch. On Windows also confirm it in the overflow flyout, since new icons hide there by default. | ☐ | ☐ | ☐ |
 | 2 | Icon colour matches the lowest remaining window (green >50, amber 21-50, red ≤20). | ☐ | ☐ | ☐ |
-| 3 | With both providers configured, the ring is split - Claude on the left half, Codex on the right. | ☐ | ☐ | ☐ |
+| 3 | With both providers configured, there are two concentric rings - Claude outside, Codex inside - and each drains clockwise from the top. | ☐ | ☐ | ☐ |
+| 3a | With one provider disabled or unconfigured, the other keeps its ring position and the empty one stays a grey track; the icon does not collapse to a single fat ring. | ☐ | ☐ | ☐ |
+| 3b | A provider at 0% keeps a short coloured tick at the top, so it reads differently from one with no data at all. | ☐ | ☐ | ☐ |
 | 4 | Hovering shows a tooltip with each window's remaining percentage. | ☐ | ☐ | ☐ |
 | 5 | Right-click (Windows/Linux) or click (macOS) opens the menu; every entry is present and in the selected language. | ☐ | ☐ | ☐ |
 | 6 | Left-click opens the detail panel (Windows/Linux). | ☐ | ☐ | n/a |
@@ -80,7 +82,7 @@ toast landed in the right corner, whether Korean text fits its box.
 |---|---|---|
 | 32 | Claude Code stores its credentials in the login keychain rather than a file. Confirm the first read either succeeds silently or raises a keychain authorization prompt - and that clicking **Deny** degrades the provider to an error line instead of crashing the app. | ☐ |
 | 33 | After denying, confirm the prompt does **not** return on every poll (default 120 s). A modal every two minutes from an app with no Dock icon is unusable. | ☐ |
-| 34 | The `.app` shows the ring icon in Finder and in the Gatekeeper dialog - not a generic placeholder. | ☐ |
+| 34 | The `.app` shows the double-ring icon in Finder and in the Gatekeeper dialog - not a generic placeholder. | ☐ |
 | 35 | Downloaded from a release (not built locally), the bundle is quarantined; confirm `xattr -dr com.apple.quarantine` is what unblocks it, since a locally built `.app` carries no quarantine flag and cannot test this. | ☐ |
 | 36 | Ad-hoc signatures change on every rebuild, which invalidates the keychain ACL. After installing an update, confirm the keychain prompt returning once is the worst that happens. | ☐ |
 | 37 | With a menu bar manager running (Bartender, Ice, Hidden Bar), confirm the welcome toast carries the line about unhiding tokentray - and that the icon is findable once unhidden. Managers hide new items by default, which is how a working app reads as a broken one. | ☐ |

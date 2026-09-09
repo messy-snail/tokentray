@@ -32,9 +32,10 @@ codebase.
 - For every window: remaining %, time to reset, **pace** (1.0x means you will
   land exactly at zero when it resets) and a burnout projection.
 
-The tray icon is a ring that drains from the top, coloured green above 50%,
-amber to 20%, red below. With both providers set up it splits: Claude left,
-Codex right.
+The tray icon is a ring that drains clockwise from the top, coloured green
+above 50%, amber to 20%, red below. With both providers set up it becomes two
+rings: Claude outside, Codex inside. Each drains a full turn, so both are read
+the same way.
 
 ## Install
 
