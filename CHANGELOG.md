@@ -8,7 +8,7 @@ First release. A cross-platform reimplementation of
 run the same code.
 
 ### Added
-- Tray icon showing Claude Code and Codex remaining quota as a split ring.
+- Tray icon showing Claude Code and Codex remaining quota as concentric rings.
 - Self-drawn toast notifications at 50/25/10% remaining, plus reset reminders.
 - Detail panel with per-window meters, reset countdown, pace and burnout.
 - `status`, `setup`, `doctor`, `open`, `refresh`, `stop`, `config`, `autostart`.

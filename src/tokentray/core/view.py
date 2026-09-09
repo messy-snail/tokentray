@@ -15,6 +15,9 @@ from .models import Snapshot, Status
 
 PROVIDER_NAMES = {"claude": "Claude Code", "codex": "Codex"}
 PROVIDER_ABBR = {"claude": "CC", "codex": "CX"}
+# Registry order, which every surface renders unsorted: the tray icon draws the
+# first entry as its outermost ring, the tooltip and the panel list it first.
+PROVIDER_ORDER = ("claude", "codex")
 
 
 @dataclass
