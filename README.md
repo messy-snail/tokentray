@@ -4,12 +4,17 @@
 [![한국어](https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-64748B?style=flat-square)](https://github.com/messy-snail/tokentray/blob/main/README.ko.md)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/messy-snail/tokentray/ci.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/messy-snail/tokentray/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
-[![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Qt](https://img.shields.io/badge/Qt-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6B7280?style=flat-square)
 [![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)][LICENSE]
+
+<!-- Restore these two inside the badge row at the 0.1.0 tag. Until a
+     package and a release exist they render as "not found" and
+     "no releases", which reads as a broken project.
+[![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
+[![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
+-->
 
 A system-tray monitor for **Claude Code** and **OpenAI Codex** quota, with
 readable desktop alerts before you run out. Windows, macOS and Linux, one
@@ -40,12 +45,20 @@ the same way.
 
 ## Install
 
+> **0.1.0 is not released yet.** Linux still has an unverified desktop, so
+> there is no PyPI package and no packaged build to download. Install from
+> source until it ships - everything below the install step works the same.
+
 ```bash
-uv tool install tokentray
+git clone https://github.com/messy-snail/tokentray
+cd tokentray
+uv tool install .
 ```
 
-Or download a packaged build for your platform from
-[Releases](https://github.com/messy-snail/tokentray/releases) - no Python needed.
+Once 0.1.0 is out, this becomes `uv tool install tokentray`, or a packaged
+build for your platform from
+[Releases](https://github.com/messy-snail/tokentray/releases) - no Python
+needed.
 
 Then:
 
