@@ -1,14 +1,15 @@
 # tokentray
 
+[![English](https://img.shields.io/badge/README-English-2563EB?style=flat-square)](https://github.com/messy-snail/tokentray/blob/main/README.md)
+[![한국어](https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-64748B?style=flat-square)](https://github.com/messy-snail/tokentray/blob/main/README.ko.md)
+
 [![CI](https://img.shields.io/github/actions/workflow/status/messy-snail/tokentray/ci.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/messy-snail/tokentray/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
 [![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Qt](https://img.shields.io/badge/Qt-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6B7280?style=flat-square)
-[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
-
-**English** · [한국어](README.ko.md)
+[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)][LICENSE]
 
 A system-tray monitor for **Claude Code** and **OpenAI Codex** quota, with
 readable desktop alerts before you run out. Windows, macOS and Linux, one
@@ -19,7 +20,7 @@ codebase.
 > (MIT), which pioneered this as a SwiftBar plugin plus a PowerShell tray
 > script. The quota endpoints, the pace/burnout formulas and the colour tiers
 > follow that project so the numbers stay comparable, and its MIT notice is
-> preserved in [LICENSE](LICENSE). Rewritten in Python because the original's
+> preserved in [LICENSE]. Rewritten in Python because the original's
 > two scripts had drifted: Windows never got reset reminders, phone alerts, or
 > alerts for Codex at all.
 
@@ -183,7 +184,7 @@ uv run pytest
 ```
 
 Widget tests run under Qt's offscreen platform, so they prove the code works,
-not that it looks right - [MANUAL_TEST.md](MANUAL_TEST.md) covers the rest.
+not that it looks right - [MANUAL_TEST.md] covers the rest.
 
 Packaged builds:
 
@@ -206,9 +207,14 @@ QT_QPA_PLATFORM=offscreen uv run python packaging/make_icons.py
 
 On a Linux machine, `./scripts/verify-linux.sh` runs everything about a desktop
 that can be checked without a person watching, and prints what is left for
-[MANUAL_TEST.md](MANUAL_TEST.md).
+[MANUAL_TEST.md].
 
 ## License
 
-MIT - see [LICENSE](LICENSE). tokentray bundles Qt via PySide6, which is LGPLv3;
+MIT - see [LICENSE]. tokentray bundles Qt via PySide6, which is LGPLv3;
 packaged builds include it as a dynamically linked library.
+
+<!-- Absolute, because this file is also the PyPI long description and a
+     relative link there resolves against pypi.org. -->
+[LICENSE]: https://github.com/messy-snail/tokentray/blob/main/LICENSE
+[MANUAL_TEST.md]: https://github.com/messy-snail/tokentray/blob/main/MANUAL_TEST.md
