@@ -16,41 +16,38 @@
 [![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
 -->
 
-A system-tray monitor for **Claude Code** and **OpenAI Codex** quota, with
-readable desktop alerts before you run out. Windows, macOS and Linux, one
-codebase.
+A system-tray monitor for **Claude Code** and **OpenAI Codex** usage limits.
+Check your remaining quota and get desktop alerts before it runs out.
+Available for Windows, macOS and Linux.
 
 > **Attribution.** tokentray is a from-scratch reimplementation derived from
 > [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
-> (MIT), which pioneered this as a SwiftBar plugin plus a PowerShell tray
-> script. The quota endpoints, the pace/burnout formulas and the colour tiers
-> follow that project so the numbers stay comparable, and its MIT notice is
-> preserved in [LICENSE]. Rewritten in Python because the original's
-> two scripts had drifted: Windows never got reset reminders, phone alerts, or
-> alerts for Codex at all.
+> (MIT), originally a SwiftBar plugin and a PowerShell tray script. tokentray
+> follows its quota endpoints, pace and exhaustion formulas, and colour tiers.
+> Its MIT notice is preserved in [LICENSE]. The Python implementation brings
+> a shared interface and notification features to all three platforms.
 
 ## What it shows
 
-- **Claude Code** - 5 hours, 7 days, per-model Opus/Sonnet sub-limits once you
-  use them, and pay-as-you-go Extra Usage.
-- **Codex** - whichever rate-limit windows your plan actually reports (a
-  weekly-only plan shows one 7-day row, not a mislabelled 5-hour one), the
-  per-model sub-limits, plus credits. Codex sub-limits are shown even at 0%,
-  unlike Claude's: a plan whose own quota is weekly-only still gets a 5-hour
-  limit here, and that row is the only place the shorter cadence is visible.
-- For every window: remaining %, time to reset, **pace** (1.0x means you will
-  land exactly at zero when it resets) and a burnout projection.
+- **Claude Code** - 5-hour and 7-day limits, Opus/Sonnet limits once used,
+  and pay-as-you-go Extra Usage.
+- **Codex** - the usage periods reported for your plan, model-specific limits,
+  and credits. A weekly-only account limit appears as a 7-day row. Model-specific
+  limits are shown even at 0% usage, so any separate 5-hour limit remains visible.
+- For each period: remaining percentage, time to reset, **usage pace**, and
+  estimated time to exhaustion. A pace of 1.0x means the quota is projected to
+  run out at reset if your average usage rate stays the same.
 
-The tray icon is a ring that drains clockwise from the top, coloured green
-above 50%, amber to 20%, red below. With both providers set up it becomes two
-rings: Claude outside, Codex inside. Each drains a full turn, so both are read
-the same way.
+The tray icon uses rings that drain clockwise from the top. With both services
+enabled, Claude is outside and Codex is inside. Colour follows the remaining
+percentage rounded down to a whole number: green above 50%, amber from 21% to
+50%, and red at 20% or below. A service with no usage data has a grey ring.
 
 ## Install
 
-> **0.1.0 is not released yet.** Linux still has an unverified desktop, so
-> there is no PyPI package and no packaged build to download. Install from
-> source until it ships - everything below the install step works the same.
+> **0.1.0 is not released yet.** Linux desktop validation is still pending.
+> There is no PyPI package or packaged download yet; use the source installation
+> below.
 
 ```bash
 git clone https://github.com/messy-snail/tokentray
@@ -58,10 +55,10 @@ cd tokentray
 uv tool install .
 ```
 
-Once 0.1.0 is out, this becomes `uv tool install tokentray`, or a packaged
-build for your platform from
-[Releases](https://github.com/messy-snail/tokentray/releases) - no Python
-needed.
+For 0.1.0, the planned installation options are `uv tool install tokentray`
+and platform-specific downloads from
+[Releases](https://github.com/messy-snail/tokentray/releases).
+Packaged downloads will not require a separate Python installation.
 
 Then:
 
@@ -74,7 +71,7 @@ locale, and offers to start tokentray at login.
 
 ## Commands
 
-| Command | |
+| Command | Description |
 |---|---|
 | `tokentray` | Start the tray app |
 | `tokentray setup` | Interactive first-run configuration |
@@ -85,80 +82,92 @@ locale, and offers to start tokentray at login.
 | `tokentray webhook setup/test` | Configure and test Slack, Discord, ntfy, or a generic webhook |
 | `tokentray autostart enable/disable/status` | Manage start-at-login |
 
-## How it finds your tokens
+## Login credentials
 
-tokentray reads the credentials the CLIs already keep on your machine and
-**never refreshes Claude's token**: Claude Code owns it, and a second writer is
-how people end up logged out. When it expires, tokentray says so and points you
-at `claude`.
+tokentray reads the credentials saved on your machine by Claude Code and Codex.
+**Claude token refresh is left to Claude Code** to avoid conflicting updates.
+If the token expires, tokentray prompts you to run `claude` to renew your login.
 
-| | Location |
+| Service | Location |
 |---|---|
 | Claude Code | `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`), falling back to the macOS login keychain |
 | Codex | `~/.codex/auth.json` (or `$CODEX_HOME`) |
 
-If a file holds no usable token - Claude Code writes plan metadata with a blank
-`accessToken` when the session is authenticated elsewhere, such as through the
-desktop app - `tokentray doctor` reports `no token in file` rather than claiming
-you are logged out.
+If the credentials file contains plan metadata but no usable `accessToken`,
+`tokentray doctor` reports `no token in file`. This can happen when authentication
+is handled elsewhere, such as through a desktop app, and does not necessarily
+mean you are logged out.
 
-You can paste a token instead during `setup`, stored in your OS keyring. Worth
-knowing before you do: a Claude token expires within hours and only Claude Code
-can renew it, so pasting one is a stopgap, not a setup.
+You can also paste a token during `setup`. It is stored in your OS keyring,
+with a separate local secret file as a fallback if the keyring is unavailable
+(see Privacy). A pasted Claude token is temporary: tokentray cannot renew it
+when it expires.
 
 Codex token refresh is **opt-in** (`tokentray config set codex.refresh true`)
-because it rewrites `auth.json`, a file the Codex CLI also owns. When enabled,
-tokentray re-reads the file immediately before writing and backs off if the CLI
-changed it in the meantime.
+because file-based credentials share `auth.json` with the Codex CLI. Before
+writing refreshed credentials, tokentray re-reads that file and skips the write
+if the CLI has changed it in the meantime.
 
 ## Configuration
 
-`tokentray config path` prints every location. Useful keys:
+`tokentray config path` prints the configuration and data paths. Common settings:
 
-| Key | Default | |
+| Key | Default | Description |
 |---|---|---|
-| `poll_interval` | `120` | Seconds between checks (floor 30) |
+| `poll_interval` | `120` | Seconds between checks (minimum 30) |
 | `thresholds` | `[50, 25, 10]` | Remaining % that trigger an alert |
-| `remind_before` | `[60, 30, 10]` | Minutes before a reset to nudge; empty disables |
+| `remind_before` | `[60, 30, 10]` | Reminder times in minutes before reset; empty disables |
 | `language` | from locale | `en` or `ko` |
 | `popup.duration` | `8` | Seconds a toast stays up |
 | `native_notifications` | `true` | Also send to the OS notification centre |
-| `webhook.enabled` / `.kind` | off | One of `slack`, `discord`, `ntfy`, or `generic` |
+| `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | Enable external alerts and choose `slack`, `discord`, `ntfy`, or `generic` |
 | `codex.refresh` | `false` | Let tokentray refresh the Codex token |
 | `linux.force_xwayland` | `true` | See below |
 
 Choose **Notification integrations…** from the tray menu to configure one
 outbound destination, validate its URL and send a test. Slack and Discord use
-their Incoming Webhook feature; the URL is stored in the OS keyring rather than
-the regular config file. You can also configure it from a terminal:
+their Incoming Webhook feature. The URL is stored in the OS keyring, or a separate
+local secret file if the keyring is unavailable (see Privacy). You can also
+configure it from a terminal:
 
 ```bash
 tokentray webhook setup --service slack
 tokentray webhook test
 ```
 
+> **Notification requirements**
+>
+> External alerts are sent by a device running tokentray with an internet
+> connection. Monitoring usage also requires valid login credentials. Quitting
+> the app, shutting down the device, or putting it to sleep stops its checks and
+> delivery. Closing the detail window leaves monitoring active in the tray.
+>
+> Multiple devices monitoring the same account and sending to the same
+> destination can produce duplicate alerts. Enable external alerts on only one
+> device; the others can still show desktop alerts. There is no automatic
+> handover if the sending device stops running.
+
 Slack takes the sender name and icon from the Slack app that owns the webhook,
 so set the included `packaging/resources/tokentray-512.png` as that app's icon.
 Discord likewise lets you set the webhook avatar in the channel settings.
 
-## Why the notifications are drawn, not native
+## Notifications
 
-Native notifications are a secondary channel here, never the primary one. macOS
-delivers them only from a signed bundle; Windows needs a registered
-AppUserModelID and silently swallows the legacy balloon path under Focus Assist;
-and the three platforms disagree about styling. A window tokentray draws itself
-looks the same everywhere, always appears, and can show a meter - which is most
-of the message.
+tokentray shows desktop popups with a remaining-quota meter. It can also send
+alerts to the OS notification centre and your configured external destination.
+The custom popups keep the presentation consistent across platforms; OS alerts
+depend on platform support and notification settings.
 
 ## Platform notes
 
-**Windows.** A new tray icon hides in the overflow flyout; the welcome popup
-offers a button straight to that setting. Downloads are unsigned, so SmartScreen
-will warn once - choose *More info* then *Run anyway*. When installed with
-`uv tool`, the background process appears in Task Manager as `pythonw.exe`.
+**Windows.** New tray icons may appear under hidden icons in the taskbar. The
+welcome popup links to the relevant setting. Packaged builds are unsigned, so
+SmartScreen may show a warning; choose *More info* then *Run anyway* to continue.
+When installed with `uv tool`, the background process appears in Task Manager
+as `pythonw.exe`.
 
-**macOS.** Builds are ad-hoc signed but not notarised, so Gatekeeper quarantines
-them:
+**macOS.** Builds are ad-hoc signed but not notarised. If Gatekeeper blocks a
+downloaded app, remove its quarantine attribute:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/tokentray.app
@@ -168,9 +177,8 @@ The app is menu-bar only (`LSUIElement`), so there is no Dock icon by design.
 Builds are arm64 only - there is no Intel build. The CLI ships inside the
 bundle, so `status`, `doctor` and `autostart` are at
 `/Applications/tokentray.app/Contents/MacOS/tokentray`; symlink it onto your
-PATH if you want it as plain `tokentray`. Claude Code keeps its credentials in
-the login keychain rather than a file on macOS, so the first read may raise a
-keychain authorization prompt.
+PATH to use `tokentray` directly. If Claude Code credentials are stored in the
+login keychain, the first read may show a keychain access prompt.
 
 **Linux.** Shipped as a tarball only - no `.deb`, AppImage or Flatpak. Run
 `./install.sh` from the unpacked archive to get a launcher entry and an icon
@@ -178,18 +186,19 @@ keychain authorization prompt.
 AppIndicator extension for a tray at all; KDE works out of the box. Some
 distributions need `libxcb-cursor0` installed. Under
 Wayland, tokentray runs through XWayland by default because Wayland gives
-clients no say in window placement, which would scatter toasts wherever the
-compositor likes; set `linux.force_xwayland = false` for native Wayland and
-notification-centre alerts instead. Without a SecretService daemon, pasted
-tokens fall back to an owner-only file and setup tells you so.
+clients limited control over popup placement. Set `linux.force_xwayland = false`
+for native Wayland and notification-centre alerts. Without a working keyring
+service such as SecretService, secrets fall back to a local file with owner-only
+permissions, and setup reports the fallback.
 
 ## Privacy
 
-Tokens go to their own vendor over HTTPS and nowhere else. The only three hosts
-tokentray contacts are `api.anthropic.com`, `chatgpt.com` and `auth.openai.com`
-(plus your webhook, if you configure one). There is no telemetry. On macOS and Linux
-the caches and the fallback secret file are written owner-only (`0600`); on
-Windows they inherit the ACL of your user profile directory, which is
+Claude and Codex login tokens are sent only to their respective services over
+HTTPS: `api.anthropic.com`, `chatgpt.com` and `auth.openai.com`. Configured
+webhooks receive notification content, not those login tokens. There is no
+telemetry. On macOS and Linux, the caches and the fallback secret file are
+written owner-only (`0600`); on Windows they inherit the ACL of your user
+profile directory, which is
 user-scoped by default but not narrowed further.
 
 ## Development
@@ -199,8 +208,8 @@ uv sync
 uv run pytest
 ```
 
-Widget tests run under Qt's offscreen platform, so they prove the code works,
-not that it looks right - [MANUAL_TEST.md] covers the rest.
+Widget tests run under Qt's offscreen platform. Real desktop appearance and
+external notification delivery require the checks in [MANUAL_TEST.md].
 
 Packaged builds:
 
@@ -214,8 +223,8 @@ it checks that both executables exist, that the windowed one answers `--version`
 instead of starting an event loop, and that the macOS bundle launches the GUI
 rather than the CLI.
 
-The icon files are generated from the same painter that draws the tray mark, so
-they never drift from it. Re-run and commit after changing the mark:
+Icon files are generated by the tray icon renderer. Regenerate and commit them
+after changing the icon design:
 
 ```bash
 QT_QPA_PLATFORM=offscreen uv run python packaging/make_icons.py

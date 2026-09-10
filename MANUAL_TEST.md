@@ -1,5 +1,7 @@
 # Manual test checklist
 
+**English** | [한국어](MANUAL_TEST.ko.md)
+
 The automated suite runs headless, so it proves the code works, not that the
 app looks or behaves right on a real desktop. Run this list on each platform
 before tagging a release.
@@ -38,9 +40,25 @@ toast landed in the right corner, whether Korean text fits its box.
 | 12 | Two toasts stack without overlapping; dismissing the lower one slides the other down. | ☐ | ☐ | ☐ |
 | 13 | The toast lands on the screen holding the tray icon in a multi-monitor setup. | ☐ | ☐ | ☐ |
 | 14 | "Pause alerts for 1 hour" silences toasts; the menu entry flips to "Resume". | ☐ | ☐ | ☐ |
-| 14a | Open "Notification integrations…", configure one Slack or Discord webhook, and confirm "Send test" reaches only that destination with the correct provider-style layout. | ☐ | ☐ | ☐ |
+| 14a | Open "Notification integrations…" and check the warning icon and notification requirements in English and Korean at the minimum window width (440 logical pixels). Text must wrap without clipping or overlapping fields or buttons. Confirm the notice remains visible with external alerts disabled, after changing services, and after test success or failure. | ☐ | ☐ | ☐ |
 | 14b | Change the selected service and confirm the old URL is cleared, a new URL is required, and saving applies without restarting tokentray. | ☐ | ☐ | ☐ |
 | 14c | Step through all four services and confirm each shows its own numbered steps, that the links open, and that the format line reads out the placeholders in full - `<id>`/`<token>` must not be swallowed as HTML. Generic shows no format line. | ☐ | ☐ | ☐ |
+
+## External delivery verification
+
+Verify each service on one available platform. Keep these results separate from
+the OS-specific UI and secret-storage checks above. Mock HTTP tests verify
+request construction and error handling; they do not establish real delivery.
+
+| Service | Real delivery status | Evidence / remaining checks |
+|---|---|---|
+| Discord | Receipt confirmed by the maintainer (reported 2026-09-10) | OS, build and message scenarios were not specified. Confirm Korean text and the layout of a usage alert separately. |
+| Slack | Not verified | Send a test and a usage alert; check receipt, Korean text and message layout. |
+| ntfy | Not verified | Send a test and a usage alert; check receipt, Korean text and message layout in the subscribed client. |
+| Generic | Endpoint-specific; not verified | Check the JSON request and receiving application's handling against a controlled endpoint. |
+
+Record the OS, build and scenarios when completing a real-service check. A
+successful test message does not by itself verify threshold or reset reminders.
 
 ## Appearance
 

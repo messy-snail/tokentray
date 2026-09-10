@@ -79,6 +79,13 @@ STRINGS: dict[str, dict[str, str]] = {
         # integration settings
         "integration.title": "Notification integrations",
         "integration.intro": "Send tokentray alerts to one Slack, Discord, ntfy, or generic webhook.",
+        "integration.notice_title": "Notification requirements",
+        "integration.notice_body": (
+            "This device must be running tokentray and connected to the internet to send alerts. "
+            "Alerts are not sent while the app is closed or the device is shut down or asleep.\n\n"
+            "Sending alerts for the same account to the same destination from multiple devices "
+            "can cause duplicates. We recommend enabling external alerts on only one device."
+        ),
         "integration.enabled": "Send alerts to this destination",
         "integration.service": "Service",
         "integration.url": "Webhook URL",
@@ -171,6 +178,13 @@ STRINGS: dict[str, dict[str, str]] = {
         # integration settings
         "integration.title": "알림 연동 설정",
         "integration.intro": "tokentray 알림을 Slack, Discord, ntfy 또는 일반 웹훅 한 곳으로 보냅니다.",
+        "integration.notice_title": "알림 이용 안내",
+        "integration.notice_body": (
+            "이 기기에서 tokentray가 실행 중이고 인터넷에 연결되어 있어야 알림을 보낼 수 있습니다. "
+            "앱 종료·기기 종료·절전 중에는 전송되지 않습니다.\n\n"
+            "여러 기기에서 같은 계정의 알림을 같은 곳으로 보내면 중복 수신할 수 있습니다. "
+            "외부 알림은 한 기기에서만 켜는 것을 권장합니다."
+        ),
         "integration.enabled": "이 목적지로 알림 보내기",
         "integration.service": "서비스",
         "integration.url": "웹훅 URL",

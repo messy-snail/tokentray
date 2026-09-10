@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QStyle,
     QVBoxLayout,
     QWidget,
 )
@@ -67,6 +68,27 @@ class IntegrationDialog(QDialog):
         intro = QLabel(t("integration.intro"), self)
         intro.setWordWrap(True)
         root.addWidget(intro)
+
+        notice = QHBoxLayout()
+        warning_icon = QLabel(self)
+        warning_icon.setPixmap(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_MessageBoxWarning).pixmap(24, 24)
+        )
+        notice.addWidget(warning_icon, 0, Qt.AlignmentFlag.AlignTop)
+        notice_text = QVBoxLayout()
+        notice_title = QLabel(t("integration.notice_title"), self)
+        title_font = notice_title.font()
+        title_font.setBold(True)
+        notice_title.setFont(title_font)
+        notice_title.setWordWrap(True)
+        notice_text.addWidget(notice_title)
+        notice_body = QLabel(t("integration.notice_body"), self)
+        notice_body.setObjectName("webhook-notice")
+        notice_body.setTextFormat(Qt.TextFormat.PlainText)
+        notice_body.setWordWrap(True)
+        notice_text.addWidget(notice_body)
+        notice.addLayout(notice_text, 1)
+        root.addLayout(notice)
 
         form = QFormLayout()
         self.enabled = QCheckBox(t("integration.enabled"), self)
