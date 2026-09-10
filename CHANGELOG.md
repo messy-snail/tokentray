@@ -28,7 +28,12 @@ run the same code.
 - "Test notification" now fires the OS notification centre alongside the in-app
   toast, so a dead native channel can be told from one nobody called.
 - `config set` hands the change to a running instance, so thresholds, reminders,
-  toast duration and `native_notifications` no longer wait for a restart.
+  popup position and duration, and `native_notifications` no longer wait for a
+  restart.
+- `popup.position` now works. It was listed in the defaults, written into every
+  config file and read by nothing; `auto`, `bottom-right` and `top-right` are
+  honoured, and the `off` it used to offer is gone - it never did anything, so a
+  config still carrying it keeps behaving as before.
 
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;

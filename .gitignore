@@ -13,3 +13,6 @@ wheels/
 /build/
 /dist/
 *.spec.bak
+
+# Claude Code scratch. A git worktree must never be committed into its own repo.
+.claude/worktrees/

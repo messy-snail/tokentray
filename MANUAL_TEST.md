@@ -65,6 +65,7 @@ successful test message does not by itself verify threshold or reset reminders.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
+| 14a | Toasts appear at the top on macOS and the bottom elsewhere by default. `tokentray config set popup.position bottom-right` then top-right, each followed by "Test notification": the stack moves without a restart and stays hugging the right edge. | ☐ | ☐ | ☐ |
 | 15 | Switch the OS between light and dark, restart, and confirm the toast and panel follow. | ☐ | ☐ | ☐ |
 | 16 | Switch the language in the tray menu; the menu, panel and next toast are all translated. | ☐ | ☐ | ☐ |
 | 17 | Korean text renders without missing glyphs or clipping. | ☐ | ☐ | ☐ |

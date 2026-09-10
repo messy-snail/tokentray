@@ -310,8 +310,15 @@ class Toast(QWidget):
 class ToastManager:
     """Owns the on-screen stack: placement, ordering and overflow."""
 
-    def __init__(self, *, duration: int = 8, anchor_widget_geometry: Callable[[], QRect | None] | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        duration: int = 8,
+        position: str = "auto",
+        anchor_widget_geometry: Callable[[], QRect | None] | None = None,
+    ) -> None:
         self.duration = duration
+        self.position = position
         self._toasts: list[Toast] = []
         self._anchor = anchor_widget_geometry
         self.on_activated: Callable[[], None] | None = None
@@ -373,10 +380,19 @@ class ToastManager:
     def _area(self) -> tuple[QRect, bool]:
         """Available screen rect, and whether to stack downward from the top.
 
-        macOS puts its menu bar and notifications at the top of the screen, so a
-        toast belongs there; Windows and Linux put the tray at the bottom.
+        Under ``auto`` the platform decides: macOS puts its menu bar and
+        notifications at the top of the screen, so a toast belongs there, while
+        Windows and Linux put the tray at the bottom. An explicit setting wins,
+        for a taskbar somebody has moved or a second monitor.
         """
         import sys
+
+        if self.position == "top-right":
+            from_top = True
+        elif self.position == "bottom-right":
+            from_top = False
+        else:
+            from_top = sys.platform == "darwin"
 
         rect: QRect | None = None
         if self._anchor is not None:
@@ -388,7 +404,7 @@ class ToastManager:
         if rect is None:
             screen = QGuiApplication.primaryScreen()
             rect = screen.availableGeometry() if screen else QRect(0, 0, 1280, 800)
-        return rect, sys.platform == "darwin"
+        return rect, from_top
 
     def _slot(self, index: int, toast: Toast, area: QRect, from_top: bool) -> QPoint:
         x = area.right() - toast.width() + SHADOW_MARGIN - EDGE_MARGIN

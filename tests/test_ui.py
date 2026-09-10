@@ -8,6 +8,7 @@ visual pass is the manual checklist in MANUAL_TEST.md.
 from __future__ import annotations
 
 import math
+import sys
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -326,6 +327,59 @@ class TestToastManager:
         first, second = manager._toasts
         assert first.pos() != second.pos()
         manager.clear()
+
+
+class TestToastPlacement:
+    """`popup.position` was a documented-looking key that nothing ever read."""
+
+    @pytest.mark.parametrize(
+        "position, platform, from_top",
+        [
+            ("top-right", "win32", True),
+            ("bottom-right", "darwin", False),
+            ("auto", "darwin", True),
+            ("auto", "win32", False),
+            ("auto", "linux", False),
+            # A value this key no longer offers, and one it never did.
+            ("off", "darwin", True),
+            ("nonsense", "win32", False),
+        ],
+    )
+    def test_the_setting_decides_which_end_toasts_stack_from(
+        self, qapp, monkeypatch, position, platform, from_top
+    ):
+        monkeypatch.setattr(sys, "platform", platform)
+        manager = popup.ToastManager(position=position)
+        assert manager._area()[1] is from_top
+
+    def test_top_and_bottom_put_a_toast_in_different_places(self, qapp):
+        top = popup.ToastManager(position="top-right")
+        bottom = popup.ToastManager(position="bottom-right")
+        top.show_alerts([make_event()])
+        bottom.show_alerts([make_event()])
+        assert top._toasts[0].pos().y() < bottom._toasts[0].pos().y()
+        # Both hug the right edge; only the vertical end is a choice.
+        assert top._toasts[0].pos().x() == bottom._toasts[0].pos().x()
+        top.clear()
+        bottom.clear()
+
+    @pytest.mark.parametrize(
+        "stored, expected",
+        [
+            ("top-right", "top-right"),
+            ("bottom-right", "bottom-right"),
+            ("auto", "auto"),
+            # `off` used to be listed and never worked, so auto is both the
+            # fallback and the migration: behaviour is unchanged for that config.
+            ("off", "auto"),
+            (None, "auto"),
+            (7, "auto"),
+        ],
+    )
+    def test_an_unusable_value_falls_back_to_auto(self, stored, expected):
+        from tokentray.core.config import Config
+
+        assert Config({"popup": {"position": stored}}).popup_position == expected
 
 
 class TestTray:

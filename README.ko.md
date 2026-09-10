@@ -108,7 +108,7 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 ## 설정
 
 `tokentray config path`로 설정과 데이터 저장 경로를 확인할 수 있습니다. `tokentray config set`은
-실행 중인 인스턴스에 변경을 전달하므로 임계값, 리셋 알림 시점, 팝업 표시 시간,
+실행 중인 인스턴스에 변경을 전달하므로 임계값, 리셋 알림 시점, 팝업 위치와 표시 시간,
 `native_notifications`는 즉시 적용됩니다. `poll_interval`과 `language`는 재시작이 필요합니다.
 주요 설정은 다음과 같습니다.
 
@@ -118,6 +118,7 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 | `thresholds` | `[50, 25, 10]` | 알림을 띄울 남은 % |
 | `remind_before` | `[60, 30, 10]` | 리셋 전 알림 시점(분), 빈 목록이면 끔 |
 | `language` | 시스템 언어 | `en` 또는 `ko` |
+| `popup.position` | `auto` | 팝업이 쌓이는 모서리: `auto`, `bottom-right`, `top-right`. `auto`는 플랫폼을 따라 macOS는 위, 나머지는 아래 |
 | `popup.duration` | `8` | 팝업 표시 시간(초) |
 | `native_notifications` | `true` | OS 알림 센터로도 함께 보내기(**Test notification**에도 적용) |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | 외부 알림 활성화 및 `slack`, `discord`, `ntfy`, `generic` 중 선택 |

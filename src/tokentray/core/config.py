@@ -16,6 +16,10 @@ import tomli_w
 
 from . import paths
 
+# Toasts always hug the right edge; only the vertical end is a choice. "auto"
+# follows the platform, because that is where each one puts its own notifications.
+POPUP_POSITIONS = ("auto", "bottom-right", "top-right")
+
 DEFAULTS: dict[str, Any] = {
     "language": "en",
     "poll_interval": 120,
@@ -23,7 +27,7 @@ DEFAULTS: dict[str, Any] = {
     "remind_before": [60, 30, 10],
     "native_notifications": True,
     "popup": {
-        "position": "auto",   # auto | bottom-right | top-right | off
+        "position": "auto",   # see POPUP_POSITIONS
         "duration": 8,
     },
     "claude": {
@@ -137,6 +141,17 @@ class Config:
             return max(2, int(self.get("popup.duration", 8)))
         except (TypeError, ValueError):
             return 8
+
+    @property
+    def popup_position(self) -> str:
+        """Which corner toasts stack from.
+
+        Anything unrecognised falls back to ``auto``, which is also the migration
+        path for the ``off`` this key used to list: it never did anything, so a
+        config still carrying it keeps behaving exactly as it already did.
+        """
+        value = self.get("popup.position", "auto")
+        return value if value in POPUP_POSITIONS else "auto"
 
 
 def _merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:

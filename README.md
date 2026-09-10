@@ -112,9 +112,9 @@ if the CLI has changed it in the meantime.
 ## Configuration
 
 `tokentray config path` prints the configuration and data paths. `tokentray config
-set` hands the change to a running instance, so thresholds, reminders, toast
-duration and `native_notifications` apply straight away; `poll_interval` and
-`language` still need a restart. Common settings:
+set` hands the change to a running instance, so thresholds, reminders, popup
+position and duration, and `native_notifications` all apply straight away;
+`poll_interval` and `language` still need a restart. Common settings:
 
 | Key | Default | Description |
 |---|---|---|
@@ -122,6 +122,7 @@ duration and `native_notifications` apply straight away; `poll_interval` and
 | `thresholds` | `[50, 25, 10]` | Remaining % that trigger an alert |
 | `remind_before` | `[60, 30, 10]` | Reminder times in minutes before reset; empty disables |
 | `language` | from locale | `en` or `ko` |
+| `popup.position` | `auto` | Which corner toasts stack from: `auto`, `bottom-right`, `top-right`. `auto` follows the platform - top on macOS, bottom elsewhere |
 | `popup.duration` | `8` | Seconds a toast stays up |
 | `native_notifications` | `true` | Also send to the OS notification centre; also used by **Test notification** |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | Enable external alerts and choose `slack`, `discord`, `ntfy`, or `generic` |

@@ -118,8 +118,8 @@ class TestWelcomeUsesTheSameGate:
         assert sent == []
 
 
-class TestTheGateFollowsTheConfig:
-    """`native_notifications = false` used to need a restart to mean anything."""
+class TestConfigReloadTakesEffect:
+    """Settings held by objects other than Config used to need a restart."""
 
     def test_a_reload_hands_the_new_value_to_the_dispatcher(
         self, qapp, isolated_config, monkeypatch
@@ -136,6 +136,22 @@ class TestTheGateFollowsTheConfig:
         )
         controller._handle_command(ipc.CMD_RELOAD_CONFIG)
         assert recorded == [False]
+
+    def test_a_reload_hands_over_the_toast_presentation(
+        self, qapp, isolated_config, monkeypatch
+    ):
+        from tokentray import app as app_mod, ipc
+        from tokentray.core import paths
+
+        controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))
+        paths.config_file().write_text(
+            'language = "en"\n[popup]\nposition = "top-right"\nduration = 30\n',
+            encoding="utf-8",
+        )
+        controller._handle_command(ipc.CMD_RELOAD_CONFIG)
+        # Held by the ToastManager, not read per poll, so it has to be handed over.
+        assert controller.toasts.position == "top-right"
+        assert controller.toasts.duration == 30
 
     def test_setting_any_key_tells_the_running_app(self, isolated_config, monkeypatch):
         from tokentray import ipc

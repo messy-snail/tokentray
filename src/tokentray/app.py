@@ -151,7 +151,9 @@ class Controller(QObject):
         self.tray = Tray()
         self.panel = DetailPanel(on_refresh=lambda: self.refresh(force=True))
         self.toasts = ToastManager(
-            duration=config.popup_duration, anchor_widget_geometry=self.tray.geometry
+            duration=config.popup_duration,
+            position=config.popup_position,
+            anchor_widget_geometry=self.tray.geometry,
         )
         self.toasts.on_activated = self.show_panel
         self.webhook = Webhook.from_config(config)
@@ -402,13 +404,15 @@ class Controller(QObject):
         elif command == ipc.CMD_RELOAD_CONFIG:
             self.config = Config.load()
             self.webhook.reconfigure_from_config(self.config)
-            # Thresholds, reminders and toast duration are read from self.config
-            # on every poll, so they are live the moment it is replaced. The
-            # native gate is held by the dispatcher and has to be handed over.
+            # Thresholds and reminders are read from self.config on every poll,
+            # so they are live the moment it is replaced. The native gate and the
+            # toast presentation live in other objects and have to be handed over.
             # Poll interval and language still need a restart.
             self.dispatcher.set_native_enabled(
                 bool(self.config.get("native_notifications", True))
             )
+            self.toasts.duration = self.config.popup_duration
+            self.toasts.position = self.config.popup_position
         elif command == ipc.CMD_RESET_WELCOME:
             # Applied to the in-memory copy, because the next poll rewrites the
             # whole file and would otherwise resurrect what the CLI just cleared.
