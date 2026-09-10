@@ -186,6 +186,12 @@ class TestClaudeHttpStatuses:
 
 
 class TestCacheAndBackoff:
+    def test_cached_snapshot_keeps_original_fetch_time(self, claude):
+        claude.cache.store("claude", CLAUDE_BODY, now=1000.0)
+        snapshot = claude.fetch(now=1073.0)
+        assert snapshot.status is Status.CACHED
+        assert snapshot.fetched_at == 1000.0
+
     def test_second_call_inside_ttl_does_not_hit_the_network(self, claude):
         with respx.mock:
             route = respx.get(CLAUDE_URL).mock(return_value=httpx.Response(200, json=CLAUDE_BODY))
@@ -209,6 +215,7 @@ class TestCacheAndBackoff:
             respx.get(CLAUDE_URL).mock(return_value=httpx.Response(429))
             stale = claude.fetch(force=True, now=1000.0 + 500)
         assert stale.status is Status.STALE
+        assert stale.fetched_at == 1000.0
         assert stale.windows  # the old numbers are still shown
 
     def test_backoff_suppresses_requests_until_it_expires(self, claude):
@@ -218,7 +225,8 @@ class TestCacheAndBackoff:
         with respx.mock:
             route = respx.get(CLAUDE_URL).mock(return_value=httpx.Response(500))
             claude.fetch(force=True, now=1500.0)   # fails, arms backoff
-            claude.fetch(now=1520.0)               # inside backoff -> no request
+            cached = claude.fetch(now=1520.0)       # inside backoff -> no request
+            assert cached.fetched_at == 1000.0
             assert route.call_count == 1
         with respx.mock:
             route = respx.get(CLAUDE_URL).mock(return_value=httpx.Response(200, json=CLAUDE_BODY))

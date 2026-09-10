@@ -258,13 +258,14 @@ class Controller(QObject):
         from .ui.popup import Toast
 
         samples = (
-            ("Claude Code", "test.claude_body", "green", 0.62, "3h 42m"),
-            ("Codex", "test.codex_body", "orange", 0.38, "2d 7h"),
+            ("claude", "Claude Code", "test.claude_body", "green", 0.62, "3h 42m"),
+            ("codex", "Codex", "test.codex_body", "orange", 0.38, "2d 7h"),
         )
-        for provider, body_key, tier, fraction, reset in samples:
+        for provider_id, provider, body_key, tier, fraction, reset in samples:
             self.toasts.show(
                 Toast(
                     title=i18n.t("fmt.notify_title", provider=provider),
+                    provider=provider_id,
                     body=i18n.t(body_key),
                     tier=tier,
                     fraction=fraction,

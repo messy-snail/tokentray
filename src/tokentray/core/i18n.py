@@ -62,6 +62,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "status.window_reset": "Window reset — awaiting fresh data",
         "status.live": "live",
         "status.cached": "cached",
+        "status.data_age": "Data fetched {seconds} seconds ago",
         "status.stale": "stale",
         # notifications
         "notify.summary_title": "Usage Warning",
@@ -163,6 +164,7 @@ STRINGS: dict[str, dict[str, str]] = {
         "status.window_reset": "창 리셋됨 — 새 데이터 대기 중",
         "status.live": "실시간",
         "status.cached": "캐시",
+        "status.data_age": "{seconds}초 전 데이터",
         "status.stale": "오래된 데이터",
         # notifications
         "notify.summary_title": "사용량 경고",

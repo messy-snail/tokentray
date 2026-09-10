@@ -38,7 +38,8 @@ from PySide6.QtWidgets import (
 
 from ..core.alerts import AlertEvent
 from ..notify.formatting import summarize
-from . import icons, theme
+from . import theme
+from .provider_icons import ProviderMark
 
 CARD_WIDTH = 372
 SHADOW_MARGIN = 20
@@ -93,11 +94,13 @@ class Toast(QWidget):
         detail: str = "",
         duration: int = 8,
         sticky: bool = False,
+        provider: str | None = None,
         actions: list[tuple[str, Callable[[], None]]] | None = None,
     ) -> None:
         super().__init__(None)
         self._palette = theme.current()
         self._sticky = sticky
+        self._provider = provider
 
         self.setWindowFlags(
             Qt.WindowType.Tool
@@ -189,11 +192,9 @@ class Toast(QWidget):
         row.addLayout(content, 1)
 
         header = QHBoxLayout()
-        header.setSpacing(8)
-        mark = QLabel(card)
+        header.setSpacing(6)
+        mark = ProviderMark(self._provider, card)
         mark.setObjectName("app-icon")
-        mark.setFixedSize(16, 16)
-        mark.setPixmap(icons.render_app_pixmap(16))
         header.addWidget(mark, 0, Qt.AlignmentFlag.AlignVCenter)
         heading = QLabel(title, card)
         heading.setStyleSheet(
@@ -326,9 +327,11 @@ class ToastManager:
         if len(events) > MAX_VISIBLE:
             worst = min(events, key=lambda e: e.row.remaining if e.row else 100)
             summary = summarize(events)
+            providers = {event.provider for event in events}
             self.show(
                 Toast(
                     title=summary.title,
+                    provider=next(iter(providers)) if len(providers) == 1 else None,
                     body=summary.body,
                     tier=worst.tier,
                     detail=summary.detail,
@@ -341,6 +344,7 @@ class ToastManager:
             self.show(
                 Toast(
                     title=event.title,
+                    provider=event.provider,
                     body=event.body,
                     tier=event.tier,
                     fraction=(row.remaining / 100) if row else None,

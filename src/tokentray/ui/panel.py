@@ -29,6 +29,8 @@ from ..core.view import ProviderView
 from . import theme
 from .popup import SHADOW_MARGIN, _Meter, _rgba
 from .wrapping import WrappingLabel
+from .elided import ElidedLabel
+from .provider_icons import ProviderMark
 
 PANEL_WIDTH = 340
 
@@ -182,12 +184,19 @@ class DetailPanel(QWidget):
         block.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         head = QHBoxLayout()
-        title = QLabel(view.title, parent)
+        head.setSpacing(6)
+        mark = ProviderMark(view.provider, parent)
+        mark.setObjectName("provider-icon")
+        head.addWidget(mark)
+        title = ElidedLabel(view.title, parent)
         title.setObjectName("title")
         head.addWidget(title, 1)
-        if view.source:
-            source = _muted(view.source, parent)
-            source.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+        if view.source_status:
+            source = QLabel(view.source_status, parent)
+            source.setObjectName("muted")
+            source.setTextFormat(Qt.TextFormat.PlainText)
+            source.setToolTip(view.source_tooltip)
+            source.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
             source.setProperty("panel-source", True)
             head.addWidget(source)
         block.addLayout(head)

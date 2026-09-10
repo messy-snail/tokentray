@@ -8,6 +8,7 @@ Qt out of anything that needs testing.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from datetime import datetime, timezone
 
 from . import compute, i18n
@@ -73,6 +74,8 @@ class ProviderView:
     source: str
     rows: list[WindowRow] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    source_status: str = ""
+    source_tooltip: str = ""
 
     @property
     def worst_remaining(self) -> int | None:
@@ -102,6 +105,8 @@ def build_view(snapshot: Snapshot, now: datetime | None = None) -> ProviderView:
         status=snapshot.status,
         message=status_message(snapshot),
         source=source_label(snapshot),
+        source_status=panel_source_status(snapshot),
+        source_tooltip=panel_source_tooltip(snapshot, now),
     )
     if not snapshot.status.has_data:
         return view
@@ -233,6 +238,26 @@ def source_label(snapshot: Snapshot) -> str:
     if snapshot.status is Status.STALE:
         return f"{i18n.t('status.stale')}{f' - {snapshot.detail}' if snapshot.detail else ''}"
     return snapshot.detail or ""
+
+
+def panel_source_status(snapshot: Snapshot) -> str:
+    key = {
+        Status.OK: "status.live", Status.CACHED: "status.cached", Status.STALE: "status.stale",
+    }.get(snapshot.status)
+    return i18n.t(key) if key else ""
+
+
+def panel_source_tooltip(snapshot: Snapshot, now: datetime) -> str:
+    if snapshot.status not in (Status.CACHED, Status.STALE):
+        return ""
+    parts: list[str] = []
+    timestamp = snapshot.fetched_at
+    if isinstance(timestamp, (int, float)) and math.isfinite(timestamp) and timestamp > 0:
+        seconds = max(0, int(now.timestamp() - timestamp))
+        parts.append(i18n.t("status.data_age", seconds=seconds))
+    if snapshot.status is Status.STALE and snapshot.detail:
+        parts.append(snapshot.detail)
+    return "\n".join(parts)
 
 
 def tooltip(views: list[ProviderView], limit: int = 127) -> str:

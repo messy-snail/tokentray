@@ -91,9 +91,9 @@ class BaseProvider:
 
         if not force and entry is not None and entry.body:
             if entry.is_fresh(ttl, now):
-                return self._decorate(entry.body, Status.CACHED, f"cached ({int(entry.age(now))}s ago)")
+                return self._decorate(entry.body, Status.CACHED, f"cached ({int(entry.age(now))}s ago)", fetched_at=entry.fetched_at)
             if entry.in_backoff(now):
-                return self._decorate(entry.body, Status.STALE, entry.note or "stale")
+                return self._decorate(entry.body, Status.STALE, entry.note or "stale", fetched_at=entry.fetched_at)
         elif not force and entry is not None and entry.in_backoff(now):
             return Snapshot(provider=self.id, status=Status.ERROR, detail=entry.note or "error")
 
@@ -131,16 +131,19 @@ class BaseProvider:
     def _on_failure(self, exc: ProviderError, ttl: float, now: float) -> Snapshot:
         kept = self.cache.mark_failure(self.id, ttl, exc.detail or exc.status.value, now)
         if kept is not None and kept.body and not exc.status.is_actionable:
-            return self._decorate(kept.body, Status.STALE, exc.detail or exc.status.value)
+            return self._decorate(kept.body, Status.STALE, exc.detail or exc.status.value, fetched_at=kept.fetched_at)
         return Snapshot(provider=self.id, status=exc.status, detail=exc.detail)
 
-    def _decorate(self, body: dict[str, Any], status: Status, detail: str) -> Snapshot:
+    def _decorate(
+        self, body: dict[str, Any], status: Status, detail: str, *, fetched_at: float,
+    ) -> Snapshot:
         try:
             snapshot = self.parse(body)
         except SchemaError as exc:
             return Snapshot(provider=self.id, status=Status.SCHEMA_CHANGED, detail=exc.detail)
         snapshot.status = status
         snapshot.detail = detail
+        snapshot.fetched_at = fetched_at
         if status is Status.STALE:
             snapshot.window_reset_pending = _any_window_elapsed(snapshot.windows)
         return snapshot
