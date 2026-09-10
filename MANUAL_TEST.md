@@ -83,8 +83,8 @@ successful test message does not by itself verify threshold or reset reminders.
 | 20 | On a Korean or Japanese Windows console (cp949/cp932), `tokentray status` prints without a UnicodeEncodeError. | ☐ | n/a | n/a |
 | 21 | Enable start-at-login, log out and back in, and confirm it starts with no console window and no welcome toast. | ☐ | ☐ | ☐ |
 | 22 | Disable it and confirm the registration is gone (`tokentray autostart status`). | ☐ | ☐ | ☐ |
-| 23 | Quit from the menu and confirm the process exits and the tray icon disappears. | ☐ | ☐ | ☐ |
 | 22a | With the app running, `tokentray config set native_notifications false`, then "Test notification": the toasts still appear and no OS banner does. Set it back to `true` and confirm the banner returns - all without restarting. | ☐ | ☐ | ☐ |
+| 23 | Quit from the menu and confirm the process exits and the tray icon disappears. | ☐ | ☐ | ☐ |
 | 23a | With the app running, `tokentray state reset --welcome`, wait past one poll interval, then quit and relaunch: the welcome appears again. This proves the running app's in-memory state did not overwrite the reset. | ☐ | ☐ | ☐ |
 
 ## Failure states
