@@ -37,13 +37,17 @@ class TestTheAttemptIsRecorded:
     def tray(self, qapp):
         return tray_mod.Tray()
 
-    def test_an_attempt_is_always_logged(self, tray, caplog):
+    def test_an_attempt_is_always_logged(self, tray, caplog, monkeypatch):
+        # Support is pinned rather than read off the runner: the offscreen plugin
+        # answers False on macOS and True on Linux, and this test is about the
+        # attempt being recorded, not about what any one desktop reports.
+        monkeypatch.setattr(tray_mod, "supports_messages", lambda: False)
         with caplog.at_level(logging.INFO, logger="tokentray.tray"):
             tray.show_message("tokentray", "body")
         record = caplog.records[-1]
         assert "native notification attempted" in record.getMessage()
-        # Offscreen reports no message support, so one line carries both the fact
-        # that we tried and the reason it may have gone nowhere.
+        # One line carries both the fact that we tried and the reason it may have
+        # gone nowhere.
         assert "supported=False" in record.getMessage()
 
     def test_a_raising_backend_is_logged_not_swallowed(self, tray, caplog, monkeypatch):
