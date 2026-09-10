@@ -8,6 +8,7 @@ quietly.
 
 from __future__ import annotations
 
+import logging
 import sys
 
 from PySide6.QtCore import QObject, QRect, QTimer, Signal
@@ -23,6 +24,17 @@ from . import icons
 # so an early "no tray" answer is often just a race.
 RETRY_INTERVAL_MS = 5_000
 MAX_RETRIES = 12
+
+# How long the OS is asked to keep a notification on screen. Advisory everywhere:
+# every platform overrides it to taste.
+MESSAGE_TIMEOUT_MS = 6_000
+
+log = logging.getLogger("tokentray.tray")
+
+
+def supports_messages() -> bool:
+    """Wrapped so a test can answer for a desktop it is not running on."""
+    return QSystemTrayIcon.supportsMessages()
 
 
 class Tray(QObject):
@@ -91,11 +103,25 @@ class Tray(QObject):
         Best effort by design: it is suppressed by Focus Assist on Windows and
         needs a signed bundle on macOS, which is exactly why the custom toast is
         the primary channel rather than this.
+
+        The failure mode is silence - Qt's macOS backend returns without raising
+        and without delivering - so the log line is the only thing separating a
+        broken channel from a channel nobody asked to use. It says "attempted"
+        rather than "sent" because Qt cannot confirm delivery on any platform, and
+        claiming otherwise is how this went unnoticed in the first place.
         """
+        supported = supports_messages()
         try:
-            self._icon.showMessage(title, body, icons.app_icon(), 6000)
+            self._icon.showMessage(title, body, icons.app_icon(), MESSAGE_TIMEOUT_MS)
         except Exception:
-            pass
+            log.warning(
+                "native notification failed (supported=%s): %s",
+                supported,
+                title,
+                exc_info=True,
+            )
+            return
+        log.info("native notification attempted (supported=%s): %s", supported, title)
 
     def set_autostart_checked(self, enabled: bool) -> None:
         self._autostart_action.blockSignals(True)

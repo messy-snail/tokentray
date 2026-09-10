@@ -32,6 +32,8 @@ autostart_app = typer.Typer(help="Manage starting tokentray at login.")
 app.add_typer(autostart_app, name="autostart")
 webhook_app = typer.Typer(help="Configure one outbound notification destination.")
 app.add_typer(webhook_app, name="webhook")
+state_app = typer.Typer(help="Reset the bookkeeping tokentray keeps between runs.")
+app.add_typer(state_app, name="state")
 
 
 @app.callback(invoke_without_command=True)
@@ -115,10 +117,12 @@ def stop() -> None:
 
 @app.command()
 def doctor() -> None:
-    """Check credentials, storage and display prerequisites."""
+    """Check credentials, storage, display and notification delivery."""
+    from .diagnostics import report
+
     config = Config.load()
     i18n.set_language(config.language)
-    for line in _diagnose(config):
+    for line in report(config):
         echo(line)
 
 
@@ -153,7 +157,7 @@ def config_set(key: str, value: str) -> None:
             kind=str(config.get("webhook.kind", "generic")),
             url=value,
         )
-        _reload_running_webhook()
+        _reload_running_config()
         from .core import paths
 
         typer.echo(f"webhook.url = '********'  ({paths.config_file()})")
@@ -161,6 +165,9 @@ def config_set(key: str, value: str) -> None:
     parsed = parse_value(value)
     config.set(key, parsed)
     path = config.save()
+    # Without this a running instance keeps the value it started with, which is
+    # how `native_notifications = false` used to need a restart to mean anything.
+    _reload_running_config()
     typer.echo(f"{key} = {parsed!r}  ({path})")
 
 
@@ -204,6 +211,59 @@ def config_path() -> None:
     typer.echo(f"log     {paths.log_file()}")
 
 
+@state_app.command("reset")
+def state_reset(
+    welcome: bool = typer.Option(
+        False, "--welcome", help="Show the first-run welcome again on the next start."
+    ),
+    alerts: bool = typer.Option(
+        False, "--alerts", help="Forget which thresholds and reminders already fired."
+    ),
+    everything: bool = typer.Option(False, "--all", help="Both of the above."),
+) -> None:
+    """Clear remembered bookkeeping so a one-time notice or alert can happen again."""
+    from . import ipc
+    from .core import paths, state
+
+    if everything:
+        welcome = alerts = True
+    if not (welcome or alerts):
+        typer.secho(
+            "nothing to reset - pass --welcome, --alerts or --all",
+            fg=typer.colors.YELLOW,
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    # A running app holds the state in memory and rewrites the whole file on every
+    # poll, so writing the file underneath it would be undone within one interval.
+    # Probing separately rather than inferring liveness from the first reset keeps
+    # --all from half-applying if the app quits mid-sequence, and the reply carries
+    # the pause flag needed below.
+    live = ipc.send_command(ipc.CMD_STATUS)
+    if live is not None:
+        if welcome:
+            ipc.send_command(ipc.CMD_RESET_WELCOME)
+        if alerts:
+            ipc.send_command(ipc.CMD_RESET_ALERTS)
+        target = "the running app"
+    else:
+        data = state.load()
+        if welcome:
+            state.clear_welcome(data)
+        if alerts:
+            state.clear_alerts(data)
+        state.save(data)
+        target = str(paths.state_file())
+
+    cleared = " and ".join(n for n, on in (("welcome", welcome), ("alerts", alerts)) if on)
+    echo(f"reset {cleared} ({target})")
+    if welcome:
+        echo("the welcome notice will appear the next time tokentray starts")
+    if alerts and live is not None and live.get("paused"):
+        echo("note: alerts are paused; resume them from the tray menu to see any")
+
+
 @webhook_app.command("setup")
 def webhook_setup(
     service: str = typer.Option("slack", "--service", "-s", help="slack, discord, ntfy, or generic"),
@@ -222,7 +282,7 @@ def webhook_setup(
     except ValueError as exc:
         typer.secho(str(exc), fg=typer.colors.RED, err=True)
         raise typer.Exit(1) from exc
-    _reload_running_webhook()
+    _reload_running_config()
     typer.echo(f"{settings.kind} webhook {'enabled' if settings.enabled else 'saved'}")
 
 
@@ -287,10 +347,11 @@ def _config_repr(key: str, value: object) -> str:
     return repr(value)
 
 
-def _reload_running_webhook() -> None:
+def _reload_running_config() -> None:
+    """Let a running instance pick up a setting that does not need a restart."""
     from . import ipc
 
-    ipc.send_command(ipc.CMD_RELOAD_WEBHOOK)
+    ipc.send_command(ipc.CMD_RELOAD_CONFIG)
 
 
 def _collect_views(config: Config, *, force: bool) -> list[ProviderView]:
@@ -330,70 +391,6 @@ def _format_status(views: list[ProviderView]) -> list[str]:
         if view.source:
             lines.append(f"  {i18n.t('label.source')}: {view.source}")
     return lines or ["no providers enabled"]
-
-
-def _diagnose(config: Config) -> list[str]:
-    from .core import paths
-    from .core.secrets import default_store
-    from .providers.claude import credentials_path
-    from .providers.codex import auth_path
-
-    lines = [f"tokentray {__version__}  (python {sys.version.split()[0]}, {sys.platform})"]
-
-    claude_file = credentials_path()
-    lines.append(f"claude credentials  {_credential_state(claude_file, 'claude')}  {claude_file}")
-    if sys.platform == "darwin":
-        lines.append("                    (falls back to the macOS login keychain)")
-    codex_file = auth_path()
-    lines.append(f"codex credentials   {_credential_state(codex_file, 'codex')}  {codex_file}")
-
-    lines.append(f"secret backend      {default_store().backend_name()}")
-    lines.append(f"config              {paths.config_file()}")
-    lines.append(f"poll interval       {config.poll_interval}s (cache ttl {config.cache_ttl}s)")
-    lines.append(f"language            {config.language}")
-    lines.append(f"thresholds          {config.thresholds}")
-    lines.append(f"remind before       {config.remind_before or 'off'}")
-    lines.append(f"tray                {_tray_report()}")
-    return lines
-
-
-
-def _credential_state(path, provider: str) -> str:
-    """Distinguish "no file", "file but no token", and "usable".
-
-    The empty-token case is real: Claude Code writes the file with plan metadata
-    but leaves accessToken blank when the session is authenticated elsewhere
-    (for example through the desktop app), and "missing" would be misleading.
-    """
-    import json
-
-    if not path.exists():
-        return "missing"
-    try:
-        with path.open("r", encoding="utf-8") as fh:
-            data = json.load(fh)
-    except (OSError, ValueError):
-        return "unreadable"
-    if provider == "claude":
-        token = (data.get("claudeAiOauth") or {}).get("accessToken")
-    else:
-        token = (data.get("tokens") or {}).get("access_token")
-    if not token:
-        return "no token in file"
-    return "found"
-
-
-def _tray_report() -> str:
-    """Report tray availability without leaving a QApplication behind."""
-    try:
-        from PySide6.QtWidgets import QApplication, QSystemTrayIcon
-    except Exception as exc:  # pragma: no cover - depends on the install
-        return f"PySide6 unavailable ({type(exc).__name__})"
-    # A QApplication is required before querying tray availability. This process
-    # exits right after, so there is nothing to tear down.
-    qapp = QApplication.instance() or QApplication([])
-    available = QSystemTrayIcon.isSystemTrayAvailable()
-    return f"{'available' if available else 'NOT available'} (platform: {qapp.platformName()})"
 
 
 def _require_running(*, ipc_command: str, quiet: bool = False) -> None:

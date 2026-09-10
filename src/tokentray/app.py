@@ -10,7 +10,6 @@ prompt — so neither may ever run where the UI lives.
 from __future__ import annotations
 
 import logging
-import logging.handlers
 import os
 import sys
 import time
@@ -18,7 +17,6 @@ from datetime import datetime, timezone
 from typing import Any
 
 from PySide6.QtCore import (
-    QLocale,
     QMetaObject,
     QObject,
     Qt,
@@ -31,8 +29,8 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QApplication
 
-from . import autostart, ipc
-from .core import i18n, paths
+from . import autostart, bootstrap, ipc
+from .core import i18n, paths, state
 from .core.alerts import AlertState, evaluate
 from .core.cache import Cache
 from .core.config import Config
@@ -58,8 +56,8 @@ def main(autostart_launch: bool = False, **kwargs: Any) -> int:
         return 0
 
     config = Config.load()
-    _configure_logging()
-    _select_platform_plugin(config)
+    bootstrap.configure_logging()
+    bootstrap.select_platform_plugin(config)
 
     from .ui import icons
     from .ui.fonts import initialize_fonts
@@ -139,10 +137,10 @@ class Controller(QObject):
         self.autostart_launch = autostart_launch
         self.views: list[ProviderView] = []
 
-        self._state = _load_state()
+        self._state = state.load()
         self.alerts = AlertState.from_dict(self._state.get("alerts"))
 
-        i18n.set_language(_initial_language(config))
+        i18n.set_language(bootstrap.initial_language(config))
 
         from .notify.dispatcher import Dispatcher
         from .notify.webhook import Webhook
@@ -188,6 +186,16 @@ class Controller(QObject):
         self.tray.set_paused(self.alerts.is_paused(time.time()))
         self.tray.unavailable.connect(self._on_tray_unavailable)
         self.tray.start()
+
+        # One line at startup so "no notification ever appeared" can be answered
+        # from the log alone - whether the channel was even plausible here, not
+        # merely whether something got around to calling it.
+        from . import diagnostics
+
+        log.info(
+            "native notifications: %s",
+            diagnostics.native_report(self.config, inspect_signature=False).summary(),
+        )
 
         self._thread.start()
         self._timer.start()
@@ -274,6 +282,13 @@ class Controller(QObject):
                 )
             )
 
+        # Also poke the OS notification centre. The toasts above prove the app can
+        # draw, which is exactly what still works when the native channel is dead;
+        # only this line can tell those two failures apart. One message, not one
+        # per provider: macOS coalesces near-identical banners anyway, and the
+        # question is just whether anything arrived at all.
+        self.dispatcher.notify_native(i18n.t("notify.info_title"), i18n.t("test.body"))
+
     def show_integration_settings(self) -> None:
         from .ui.integration import IntegrationDialog
 
@@ -335,7 +350,7 @@ class Controller(QObject):
         detail = ""
         if sys.platform == "win32":
             # New tray icons hide in the overflow area, where nobody finds them.
-            actions.append((i18n.t("welcome.tray_settings"), _open_tray_settings))
+            actions.append((i18n.t("welcome.tray_settings"), bootstrap.open_tray_settings))
         elif sys.platform == "darwin":
             # Stock macOS shows the icon, but a menu bar manager hides new items
             # by default - the same "where did it go" as the Windows overflow,
@@ -353,7 +368,10 @@ class Controller(QObject):
                 actions=actions,
             )
         )
-        self.tray.show_message(i18n.t("welcome.title"), i18n.t("welcome.body"))
+        # Through the dispatcher, not the tray directly: somebody who set
+        # native_notifications = false should not be handed an OS banner on
+        # their very first run.
+        self.dispatcher.notify_native(i18n.t("welcome.title"), i18n.t("welcome.body"))
         self._state["welcomed"] = True
         self._save_state()
 
@@ -381,9 +399,24 @@ class Controller(QObject):
             self.refresh(force=True)
         elif command == ipc.CMD_TEST:
             self.show_test_alert()
-        elif command == ipc.CMD_RELOAD_WEBHOOK:
+        elif command == ipc.CMD_RELOAD_CONFIG:
             self.config = Config.load()
             self.webhook.reconfigure_from_config(self.config)
+            # Thresholds, reminders and toast duration are read from self.config
+            # on every poll, so they are live the moment it is replaced. The
+            # native gate is held by the dispatcher and has to be handed over.
+            # Poll interval and language still need a restart.
+            self.dispatcher.set_native_enabled(
+                bool(self.config.get("native_notifications", True))
+            )
+        elif command == ipc.CMD_RESET_WELCOME:
+            # Applied to the in-memory copy, because the next poll rewrites the
+            # whole file and would otherwise resurrect what the CLI just cleared.
+            state.clear_welcome(self._state)
+            self._save_state()
+        elif command == ipc.CMD_RESET_ALERTS:
+            self.alerts = self.alerts.cleared()
+            self._save_state()
         elif command == ipc.CMD_STOP:
             # Let IPC send its reply before shutdown destroys the socket.
             QTimer.singleShot(0, self.quit)
@@ -421,62 +454,7 @@ class Controller(QObject):
 
     def _save_state(self) -> None:
         self._state["alerts"] = self.alerts.to_dict()
-        paths.atomic_write_json(paths.state_file(), self._state)
-
-
-def _load_state() -> dict:
-    return paths.read_json(paths.state_file()) or {}
-
-
-def _initial_language(config: Config) -> str:
-    """Use the configured language, falling back to the desktop locale once.
-
-    Only on first run: after that an explicit choice, including a deliberate
-    switch back to English, has to survive.
-    """
-    explicit = config.get("language")
-    if isinstance(explicit, str) and explicit and paths.config_file().exists():
-        return explicit
-
-    detected = i18n.normalize(QLocale.system().name())
-    config.set("language", detected)
-    try:
-        config.save()
-    except OSError:
-        pass
-    return detected
-
-
-def _select_platform_plugin(config: Config) -> None:
-    """Prefer XWayland on Wayland sessions.
-
-    Wayland gives clients no say in window placement, so toasts land wherever
-    the compositor wants and the tray icon reports no geometry to anchor to.
-    Running through XWayland restores both. Overridable for anyone who would
-    rather have native Wayland than positioned popups.
-    """
-    if not sys.platform.startswith("linux"):
-        return
-    if os.environ.get("QT_QPA_PLATFORM"):
-        return
-    if not config.get("linux.force_xwayland", True):
-        return
-    if os.environ.get("WAYLAND_DISPLAY") and os.environ.get("DISPLAY"):
-        os.environ["QT_QPA_PLATFORM"] = "xcb"
-
-
-def _open_tray_settings() -> None:
-    QDesktopServices.openUrl(QUrl("ms-settings:taskbar"))
-
-
-def _configure_logging() -> None:
-    handler = logging.handlers.RotatingFileHandler(
-        paths.log_file(), maxBytes=512_000, backupCount=2, encoding="utf-8"
-    )
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s"))
-    root = logging.getLogger("tokentray")
-    root.setLevel(logging.INFO)
-    root.handlers = [handler]
+        state.save(self._state)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -28,7 +28,11 @@ CMD_REFRESH = "refresh"
 CMD_STATUS = "status"
 CMD_STOP = "stop"
 CMD_TEST = "test-alert"
-CMD_RELOAD_WEBHOOK = "reload-webhook"
+CMD_RELOAD_CONFIG = "reload-config"
+# Two commands rather than one parameterised one: the wire format carries a bare
+# string, and widening it for this would be all cost and no gain.
+CMD_RESET_WELCOME = "reset-welcome"
+CMD_RESET_ALERTS = "reset-alerts"
 
 # Commands are tiny and come from our own CLI, so this only bounds a misbehaving client.
 READ_TIMEOUT_MS = 500

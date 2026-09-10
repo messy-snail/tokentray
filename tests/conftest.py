@@ -99,3 +99,12 @@ def codex_credentials(tmp_path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """One QApplication for the whole session; Qt allows no second one."""
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+
+    return QApplication.instance() or QApplication([])

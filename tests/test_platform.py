@@ -21,7 +21,6 @@ import pytest
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import QThread  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from tokentray import autostart, ipc  # noqa: E402
 from tokentray.core import paths  # noqa: E402
@@ -29,11 +28,6 @@ from tokentray.core.config import Config  # noqa: E402
 from tokentray.core.models import Snapshot, Status  # noqa: E402
 
 COMMAND = ["/opt/tokentray/tokentray-gui"]
-
-
-@pytest.fixture(scope="session")
-def qapp():
-    return QApplication.instance() or QApplication([])
 
 
 class StubProvider:
@@ -115,7 +109,7 @@ class TestWelcomeToast:
         # the welcome says, not how it draws.
         monkeypatch.setattr(popup, "Toast", lambda **kw: recorded.update(kw) or kw)
         monkeypatch.setattr(controller.toasts, "show", lambda toast: None)
-        monkeypatch.setattr(controller.tray, "show_message", lambda *args: None)
+        monkeypatch.setattr(controller.dispatcher, "notify_native", lambda *args: None)
 
         def build(platform: str) -> dict:
             monkeypatch.setattr(sys, "platform", platform)
@@ -423,7 +417,7 @@ class TestWaylandPlugin:
 
     @pytest.fixture(autouse=True)
     def linux_session(self, monkeypatch):
-        from tokentray import app as app_mod
+        from tokentray import bootstrap as app_mod
 
         monkeypatch.setattr(sys, "platform", "linux")
         monkeypatch.delenv("QT_QPA_PLATFORM", raising=False)
@@ -432,26 +426,26 @@ class TestWaylandPlugin:
         return app_mod
 
     def test_a_wayland_session_with_xwayland_is_redirected(self, linux_session):
-        linux_session._select_platform_plugin(Config({}))
+        linux_session.select_platform_plugin(Config({}))
         assert os.environ["QT_QPA_PLATFORM"] == "xcb"
 
     def test_an_explicit_choice_is_left_alone(self, linux_session, monkeypatch):
         monkeypatch.setenv("QT_QPA_PLATFORM", "wayland")
-        linux_session._select_platform_plugin(Config({}))
+        linux_session.select_platform_plugin(Config({}))
         assert os.environ["QT_QPA_PLATFORM"] == "wayland"
 
     def test_the_escape_hatch_disables_the_redirect(self, linux_session):
-        linux_session._select_platform_plugin(Config({"linux": {"force_xwayland": False}}))
+        linux_session.select_platform_plugin(Config({"linux": {"force_xwayland": False}}))
         assert "QT_QPA_PLATFORM" not in os.environ
 
     def test_without_xwayland_there_is_nothing_to_redirect_to(self, linux_session, monkeypatch):
         monkeypatch.delenv("DISPLAY", raising=False)
-        linux_session._select_platform_plugin(Config({}))
+        linux_session.select_platform_plugin(Config({}))
         assert "QT_QPA_PLATFORM" not in os.environ
 
     def test_other_platforms_are_untouched(self, linux_session, monkeypatch):
         monkeypatch.setattr(sys, "platform", "darwin")
-        linux_session._select_platform_plugin(Config({}))
+        linux_session.select_platform_plugin(Config({}))
         assert "QT_QPA_PLATFORM" not in os.environ
 
 

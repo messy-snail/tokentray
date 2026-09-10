@@ -19,6 +19,16 @@ run the same code.
   the tray with URLs kept in the OS keyring.
 - Provider-labelled notifications with the tokentray ring icon, so Claude Code
   and Codex alerts can be identified at a glance.
+- `state reset` for re-arming the first-run notice and the alert memory, applied
+  through the running instance so its in-memory copy cannot overwrite it.
+- `doctor` reports whether OS notification delivery stands any chance here: the
+  `.app` bundle, its signature, and what that means on macOS.
+- Every OS notification attempt is logged, so a channel that drops them silently
+  leaves evidence instead of nothing.
+- "Test notification" now fires the OS notification centre alongside the in-app
+  toast, so a dead native channel can be told from one nobody called.
+- `config set` hands the change to a running instance, so thresholds, reminders,
+  toast duration and `native_notifications` no longer wait for a restart.
 
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;

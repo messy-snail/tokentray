@@ -34,6 +34,7 @@ toast landed in the right corner, whether Korean text fits its box.
 | # | Check | W | M | L |
 |---|---|---|---|---|
 | 8 | "Test notification" shows separate Claude Code and Codex toasts, each with the tokentray ring, provider name, tier-coloured stripe and progress meter. | ☐ | ☐ | ☐ |
+| 8a | "Test notification" also fires one OS notification-centre banner titled *tokentray*. On Windows and Linux confirm it appears. On macOS a missing banner is expected for an unsigned build - instead confirm the log records the attempt (**Open log**), so the absence is evidenced rather than silent. | ☐ | ☐ | ☐ |
 | 9 | The toast does **not** steal focus - keep typing in an editor while it appears and confirm no keystrokes are lost. | ☐ | ☐ | ☐ |
 | 10 | It fades out on its own after ~8 s, and hovering it stops that countdown. | ☐ | ☐ | ☐ |
 | 11 | Clicking the toast opens the detail panel. | ☐ | ☐ | ☐ |
@@ -80,6 +81,8 @@ successful test message does not by itself verify threshold or reset reminders.
 | 21 | Enable start-at-login, log out and back in, and confirm it starts with no console window and no welcome toast. | ☐ | ☐ | ☐ |
 | 22 | Disable it and confirm the registration is gone (`tokentray autostart status`). | ☐ | ☐ | ☐ |
 | 23 | Quit from the menu and confirm the process exits and the tray icon disappears. | ☐ | ☐ | ☐ |
+| 22a | With the app running, `tokentray config set native_notifications false`, then "Test notification": the toasts still appear and no OS banner does. Set it back to `true` and confirm the banner returns - all without restarting. | ☐ | ☐ | ☐ |
+| 23a | With the app running, `tokentray state reset --welcome`, wait past one poll interval, then quit and relaunch: the welcome appears again. This proves the running app's in-memory state did not overwrite the reset. | ☐ | ☐ | ☐ |
 
 ## Failure states
 
@@ -88,7 +91,7 @@ successful test message does not by itself verify threshold or reset reminders.
 | 24 | Disconnect the network: the panel keeps the last numbers and marks them stale rather than blanking. | ☐ | ☐ | ☐ |
 | 25 | Log out of one CLI: that provider reports "login expired" with the command to fix it, once, not on every poll. | ☐ | ☐ | ☐ |
 | 26 | Remove `~/.codex/auth.json`: Codex reports not-configured and Claude keeps working. | ☐ | ☐ | ☐ |
-| 27 | `tokentray doctor` reports credentials, keyring backend and tray availability correctly. | ☐ | ☐ | ☐ |
+| 27 | `tokentray doctor` reports credentials, keyring backend, tray availability and the `native alerts` / `app bundle` lines correctly. | ☐ | ☐ | ☐ |
 
 ## Linux specifics
 
@@ -109,6 +112,7 @@ successful test message does not by itself verify threshold or reset reminders.
 | 35 | Downloaded from a release (not built locally), the bundle is quarantined; confirm `xattr -dr com.apple.quarantine` is what unblocks it, since a locally built `.app` carries no quarantine flag and cannot test this. | ☐ |
 | 36 | Ad-hoc signatures change on every rebuild, which invalidates the keychain ACL. After installing an update, confirm the keychain prompt returning once is the worst that happens. | ☐ |
 | 37 | With a menu bar manager running (Bartender, Ice, Hidden Bar), confirm the welcome toast carries the line about unhiding tokentray - and that the icon is findable once unhidden. Managers hide new items by default, which is how a working app reads as a broken one. | ☐ |
+| 37a | `tokentray doctor` run from inside the `.app` and from a checkout report different `app bundle` lines (a path plus `ad-hoc`, versus `none`), and both print the Notification Centre consequence. | ☐ |
 
 ## What the checklist cannot reach
 

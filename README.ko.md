@@ -75,8 +75,9 @@ tokentray setup
 | `tokentray setup` | 최초 실행 대화형 설정 |
 | `tokentray status` | 현재 사용량 출력(실행 중인 앱의 데이터를 우선 사용) |
 | `tokentray open` / `refresh` / `stop` | 실행 중인 인스턴스 제어 |
-| `tokentray doctor` | 자격 증명, 키링, 트레이 사용 가능 여부 점검 |
+| `tokentray doctor` | 자격 증명, 키링, 트레이, 알림 전달 가능 여부 점검 |
 | `tokentray config get/set/path` | 설정 읽기와 쓰기 |
+| `tokentray state reset --welcome/--alerts/--all` | 시작 안내나 알림 발화 기록 초기화 |
 | `tokentray webhook setup/test` | Slack, Discord, ntfy 또는 일반 웹훅 설정과 테스트 |
 | `tokentray autostart enable/disable/status` | 로그인 시 시작 관리 |
 
@@ -106,7 +107,10 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 
 ## 설정
 
-`tokentray config path`로 설정과 데이터 저장 경로를 확인할 수 있습니다. 주요 설정은 다음과 같습니다.
+`tokentray config path`로 설정과 데이터 저장 경로를 확인할 수 있습니다. `tokentray config set`은
+실행 중인 인스턴스에 변경을 전달하므로 임계값, 리셋 알림 시점, 팝업 표시 시간,
+`native_notifications`는 즉시 적용됩니다. `poll_interval`과 `language`는 재시작이 필요합니다.
+주요 설정은 다음과 같습니다.
 
 | 키 | 기본값 | 설명 |
 |---|---|---|
@@ -115,7 +119,7 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 | `remind_before` | `[60, 30, 10]` | 리셋 전 알림 시점(분), 빈 목록이면 끔 |
 | `language` | 시스템 언어 | `en` 또는 `ko` |
 | `popup.duration` | `8` | 팝업 표시 시간(초) |
-| `native_notifications` | `true` | OS 알림 센터로도 함께 보내기 |
+| `native_notifications` | `true` | OS 알림 센터로도 함께 보내기(**Test notification**에도 적용) |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | 외부 알림 활성화 및 `slack`, `discord`, `ntfy`, `generic` 중 선택 |
 | `codex.refresh` | `false` | tokentray가 Codex 토큰을 갱신하도록 허용 |
 | `linux.force_xwayland` | `true` | 아래 참고 |
@@ -150,6 +154,14 @@ Slack 발신자 이름과 아이콘은 웹훅을 만든 Slack 앱 설정을 따�
 외부 서비스로도 알림을 보낼 수 있습니다. 자체 팝업은 운영체제에 관계없이 일관된 형식으로
 표시하며, OS 알림은 운영체제의 지원 여부와 알림 설정에 따라 표시됩니다.
 
+macOS에서는 트레이 아이콘이 보내는 알림 센터 전달이 신뢰할 수 없습니다. Qt의 macOS
+백엔드가 Apple이 macOS 11에서 폐기한 알림 API를 아직 사용하고, macOS는 서명된 번들을
+요구하지만 이 저장소의 빌드는 ad-hoc 서명뿐입니다. 그래서 자체 팝업이 대체 수단이 아니라
+기본 경로입니다. `tokentray doctor`가 현재 빌드의 상태를 알려주고, 트레이 메뉴의
+**Test notification**이 두 경로를 동시에 쏴서 구분할 수 있게 하며, OS 알림 시도는 모두
+로그에 기록됩니다(트레이 메뉴의 **Open log** 또는 `tokentray config path`). 알림을 조용히
+버리는 경로라도 흔적은 남습니다.
+
 ## 플랫폼별 참고
 
 **Windows.** 새 트레이 아이콘은 작업 표시줄의 숨겨진 아이콘 목록에 나타날 수 있습니다.
@@ -164,6 +176,9 @@ Gatekeeper가 차단하면 다음 명령으로 격리 속성을 해제할 수 �
 xattr -dr com.apple.quarantine /Applications/tokentray.app
 ```
 
+알림 센터 전달 가능 여부는 `tokentray doctor`로 확인할 수 있습니다. 메뉴 막대 관리
+앱(Bartender, Ice, Hidden Bar)을 쓴다면, 번들이 아닌 실행은 *tokentray*가 아니라
+*Python*으로 목록에 표시된다는 점에 유의하세요.
 메뉴 막대 전용 앱(`LSUIElement`)이므로 Dock 아이콘은 표시하지 않습니다. 빌드는
 arm64 전용이며 Intel 빌드는 없습니다. CLI는 번들 안에 들어 있어서 `status`,
 `doctor`, `autostart`는 `/Applications/tokentray.app/Contents/MacOS/tokentray`에

@@ -82,6 +82,20 @@ class AlertState:
             "seeded": self.seeded,
         }
 
+    def cleared(self) -> "AlertState":
+        """A state that has fired nothing, for re-arming every alert on request.
+
+        ``seeded`` survives on purpose. ``evaluate`` throws away the usage of an
+        un-seeded poll, so clearing it would make the reset silently adopt the
+        current position - the opposite of the intent. Left seeded, the next poll
+        compares an armed 100 against wherever the window actually sits and fires
+        straight away, which is what asking for a reset means.
+
+        ``paused_until`` survives too: a pause is a separate decision with its own
+        expiry and its own menu toggle, and a reset must not quietly undo it.
+        """
+        return AlertState(paused_until=self.paused_until, seeded=True)
+
     def is_paused(self, now: float) -> bool:
         return now < self.paused_until
 

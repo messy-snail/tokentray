@@ -77,8 +77,9 @@ locale, and offers to start tokentray at login.
 | `tokentray setup` | Interactive first-run configuration |
 | `tokentray status` | Print current quota (asks the running app first) |
 | `tokentray open` / `refresh` / `stop` | Control a running instance |
-| `tokentray doctor` | Check credentials, keyring and tray availability |
+| `tokentray doctor` | Check credentials, keyring, tray and notification delivery |
 | `tokentray config get/set/path` | Read and write settings |
+| `tokentray state reset --welcome/--alerts/--all` | Re-arm the first-run notice or the alert memory |
 | `tokentray webhook setup/test` | Configure and test Slack, Discord, ntfy, or a generic webhook |
 | `tokentray autostart enable/disable/status` | Manage start-at-login |
 
@@ -110,7 +111,10 @@ if the CLI has changed it in the meantime.
 
 ## Configuration
 
-`tokentray config path` prints the configuration and data paths. Common settings:
+`tokentray config path` prints the configuration and data paths. `tokentray config
+set` hands the change to a running instance, so thresholds, reminders, toast
+duration and `native_notifications` apply straight away; `poll_interval` and
+`language` still need a restart. Common settings:
 
 | Key | Default | Description |
 |---|---|---|
@@ -119,7 +123,7 @@ if the CLI has changed it in the meantime.
 | `remind_before` | `[60, 30, 10]` | Reminder times in minutes before reset; empty disables |
 | `language` | from locale | `en` or `ko` |
 | `popup.duration` | `8` | Seconds a toast stays up |
-| `native_notifications` | `true` | Also send to the OS notification centre |
+| `native_notifications` | `true` | Also send to the OS notification centre; also used by **Test notification** |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | Enable external alerts and choose `slack`, `discord`, `ntfy`, or `generic` |
 | `codex.refresh` | `false` | Let tokentray refresh the Codex token |
 | `linux.force_xwayland` | `true` | See below |
@@ -158,6 +162,15 @@ alerts to the OS notification centre and your configured external destination.
 The custom popups keep the presentation consistent across platforms; OS alerts
 depend on platform support and notification settings.
 
+On macOS, notification-centre delivery from a tray icon is unreliable: Qt's macOS
+backend still uses the notification API Apple deprecated in macOS 11, and macOS
+wants a signed bundle, while the builds here are ad-hoc signed only. The in-app
+toast is therefore the primary channel, not a fallback. `tokentray doctor` reports
+the situation for your build, **Test notification** in the tray menu fires both
+channels so you can tell them apart, and every OS attempt is written to the log
+(**Open log** in the tray menu, or `tokentray config path`) - so a channel that
+drops notifications silently still leaves evidence.
+
 ## Platform notes
 
 **Windows.** New tray icons may appear under hidden icons in the taskbar. The
@@ -174,6 +187,9 @@ xattr -dr com.apple.quarantine /Applications/tokentray.app
 ```
 
 The app is menu-bar only (`LSUIElement`), so there is no Dock icon by design.
+Run `tokentray doctor` for the notification-centre verdict on your build. If you
+use a menu bar manager (Bartender, Ice, Hidden Bar), note that it lists an
+unbundled run as *Python* rather than *tokentray*.
 Builds are arm64 only - there is no Intel build. The CLI ships inside the
 bundle, so `status`, `doctor` and `autostart` are at
 `/Applications/tokentray.app/Contents/MacOS/tokentray`; symlink it onto your

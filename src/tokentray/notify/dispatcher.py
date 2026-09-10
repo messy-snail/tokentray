@@ -39,17 +39,17 @@ class Dispatcher:
 
         if len(events) > MAX_VISIBLE:
             summary = summarize(events)
-            self._notify_native(summary.title, summary.body)
+            self.notify_native(summary.title, summary.body)
             self._webhook.send_summary(
                 summary.title, summary.body, _worst_priority(events), detail=summary.detail
             )
             return
 
         for event in events:
-            self._notify_native(event.title, event.body)
+            self.notify_native(event.title, event.body)
             self._webhook.send(event)
 
-    def _notify_native(self, title: str, body: str) -> None:
+    def notify_native(self, title: str, body: str) -> None:
         if self._native_enabled and self._native is not None:
             self._native(title, body)
 
