@@ -9,13 +9,16 @@ from __future__ import annotations
 from typing import Callable
 
 from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QFontMetrics, QGuiApplication
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -25,6 +28,7 @@ from ..core.i18n import t
 from ..core.view import ProviderView
 from . import theme
 from .popup import SHADOW_MARGIN, _Meter, _rgba
+from .wrapping import WrappingLabel
 
 PANEL_WIDTH = 340
 
@@ -38,24 +42,24 @@ class DetailPanel(QWidget):
         self._views: list[ProviderView] = []
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self._body: QVBoxLayout | None = None
+        self._anchor: QRect | None = None
         self._rebuild()
 
     def update_views(self, views: list[ProviderView]) -> None:
         self._views = views
         if self.isVisible():
-            self._rebuild()
+            self.popup_at(self._anchor)
 
     def popup_at(self, anchor: QRect | None) -> None:
         """Show near the tray icon, kept inside the screen it belongs to."""
-        self._rebuild()
-        self.adjustSize()
-
+        self._anchor = anchor
         screen = None
         if anchor is not None and not anchor.isNull():
             screen = QGuiApplication.screenAt(anchor.center())
         screen = screen or QGuiApplication.primaryScreen()
         area = screen.availableGeometry() if screen else QRect(0, 0, 1280, 800)
+        self._rebuild()
+        self._fit_to_area(area)
 
         if anchor is not None and not anchor.isNull():
             x = anchor.center().x() - self.width() // 2
@@ -94,7 +98,8 @@ class DetailPanel(QWidget):
             }}
             QLabel {{ background: transparent; color: {palette.text.name()};
                       font-family: {theme.FONT_STACK}; }}
-            QLabel#muted {{ color: {palette.text_muted.name()}; font-size: 11px; }}
+            QLabel#muted {{ color: {palette.text_muted.name()}; font-size: 12px; }}
+            QScrollArea, QWidget#panel-content {{ background: transparent; border: none; }}
             QLabel#title {{ font-size: 13px; font-weight: 700; }}
             QLabel#row {{ font-size: 12px; }}
             QPushButton {{
@@ -117,33 +122,74 @@ class DetailPanel(QWidget):
         body.setContentsMargins(16, 14, 16, 14)
         body.setSpacing(10)
 
+        self.scroll = QScrollArea(card)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Ignored)
+        self.content = QWidget()
+        self.content.setObjectName("panel-content")
+        content_layout = QVBoxLayout(self.content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(10)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.scroll.setWidget(self.content)
+        body.addWidget(self.scroll, 1)
+
+        probe = _muted("", card)
+        probe.ensurePolished()
+        metrics = QFontMetrics(probe.font())
+        self._detail_label_width = max(
+            (metrics.horizontalAdvance(item.label)
+             for view in self._views for row in view.rows for item in row.details),
+            default=0,
+        )
+        probe.deleteLater()
+
         if not self._views:
-            body.addWidget(_muted(t("status.no_data"), card))
+            content_layout.addWidget(_muted(t("status.no_data"), self.content))
         for index, view in enumerate(self._views):
             if index:
-                body.addWidget(_separator(card, palette))
-            body.addLayout(self._provider_block(view, card, palette))
+                content_layout.addWidget(_separator(self.content, palette))
+            content_layout.addLayout(self._provider_block(view, self.content, palette))
 
         footer = QHBoxLayout()
         footer.addStretch(1)
         refresh = QPushButton(t("menu.refresh"), card)
+        refresh.setObjectName("panel-refresh")
         refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         refresh.clicked.connect(self._refresh_clicked)
         footer.addWidget(refresh)
         body.addLayout(footer)
+        self._footer = footer
 
         self.setFixedWidth(PANEL_WIDTH + SHADOW_MARGIN * 2)
+
+    def _fit_to_area(self, area: QRect) -> None:
+        self.ensurePolished()
+        # Include the card's one-pixel border on both sides.
+        width = PANEL_WIDTH - 34
+        layout = self.content.layout()
+        natural = max(layout.totalHeightForWidth(width), layout.sizeHint().height())
+        footer_height = self._footer.sizeHint().height()
+        height = natural + footer_height + 10 + 30 + SHADOW_MARGIN * 2
+        self.setFixedHeight(min(height, area.height()))
+        self.layout().activate()
 
     def _provider_block(self, view: ProviderView, parent: QWidget, palette) -> QVBoxLayout:
         block = QVBoxLayout()
         block.setSpacing(6)
+        block.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         head = QHBoxLayout()
         title = QLabel(view.title, parent)
         title.setObjectName("title")
         head.addWidget(title, 1)
         if view.source:
-            head.addWidget(_muted(view.source, parent))
+            source = _muted(view.source, parent)
+            source.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
+            source.setProperty("panel-source", True)
+            head.addWidget(source)
         block.addLayout(head)
 
         if view.message:
@@ -163,11 +209,27 @@ class DetailPanel(QWidget):
 
             block.addWidget(_Meter(row.remaining / 100, palette.tier(row.tier), palette.track))
 
-            detail = " · ".join(
-                part for part in (row.refills, row.burns, _pace(row)) if part
-            )
-            if detail:
-                block.addWidget(_muted(detail, parent))
+            if row.detail_status:
+                block.addWidget(_muted(row.detail_status, parent))
+            elif row.details:
+                grid = QGridLayout()
+                grid.setAlignment(Qt.AlignmentFlag.AlignTop)
+                grid.setHorizontalSpacing(8)
+                grid.setVerticalSpacing(3)
+                grid.setColumnMinimumWidth(0, self._detail_label_width)
+                grid.setColumnStretch(1, 1)
+                for index, item in enumerate(row.details):
+                    label = _muted(item.label, parent)
+                    label.setWordWrap(False)
+                    label.setProperty("detail-role", "label")
+                    value = _muted(item.value, parent)
+                    value.setProperty("detail-role", "value")
+                    value.setProperty("detail-key", item.key)
+                    if item.key == "pace":
+                        value.setWordWrap(False)
+                    grid.addWidget(label, index, 0, Qt.AlignmentFlag.AlignTop)
+                    grid.addWidget(value, index, 1)
+                block.addLayout(grid)
 
         for note in view.notes:
             block.addWidget(_muted(note, parent))
@@ -178,12 +240,8 @@ class DetailPanel(QWidget):
         self._on_refresh()
 
 
-def _pace(row) -> str:
-    return f"{row.pace} {row.pace_icon}".strip() if row.pace else ""
-
-
 def _muted(text: str, parent: QWidget) -> QLabel:
-    label = QLabel(text, parent)
+    label = WrappingLabel(text, parent)
     label.setObjectName("muted")
     label.setWordWrap(True)
     return label

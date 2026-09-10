@@ -72,12 +72,7 @@ def current() -> Palette:
     return DARK if is_dark() else LIGHT
 
 
-# The tail matters as much as the head. Ubuntu resolves a bare `sans-serif` to
-# DejaVu Sans, which has no Hangul, and ships CJK as "Noto Sans CJK KR" rather
-# than the "Noto Sans KR" a Windows machine would have - so without the Linux
-# families here, Korean renders as tofu on a stock GNOME desktop.
-FONT_STACK = '"Segoe UI Variable", "Segoe UI", -apple-system, "SF Pro Text", ' \
-             'Inter, "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", ' \
-             '"Noto Sans CJK KR", "Noto Sans", Cantarell, "DejaVu Sans", sans-serif'
+# Bundled family first; system families cover unsupported glyphs.
+FONT_STACK = '"Pretendard", "Noto Sans CJK KR", "Malgun Gothic", sans-serif'
 MONO_STACK = '"Cascadia Mono", Consolas, "SF Mono", "JetBrains Mono", ' \
              '"Noto Sans Mono", "DejaVu Sans Mono", monospace'

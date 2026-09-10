@@ -62,11 +62,13 @@ def main(autostart_launch: bool = False, **kwargs: Any) -> int:
     _select_platform_plugin(config)
 
     from .ui import icons
+    from .ui.fonts import initialize_fonts
 
     QApplication.setApplicationName("tokentray")
     QApplication.setApplicationDisplayName("tokentray")
     QApplication.setDesktopFileName(autostart.APP_ID)
     app = QApplication(sys.argv)
+    initialize_fonts(app)
     app.setWindowIcon(icons.app_icon())
     # Closing the detail panel must not end the process; the tray icon is the app.
     app.setQuitOnLastWindowClosed(False)

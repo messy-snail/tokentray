@@ -16,7 +16,7 @@ pytest.importorskip("PySide6")
 
 from PySide6.QtCore import QSize, Qt  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
-from PySide6.QtWidgets import QApplication, QLabel  # noqa: E402
+from PySide6.QtWidgets import QApplication, QLabel, QWidget  # noqa: E402
 
 from tokentray.core import i18n  # noqa: E402
 from tokentray.core.compute import TIER_COLORS  # noqa: E402
@@ -33,6 +33,8 @@ NOW = datetime(2026, 9, 7, 12, 0, tzinfo=timezone.utc)
 @pytest.fixture(scope="session")
 def qapp():
     app = QApplication.instance() or QApplication([])
+    from tokentray.ui.fonts import initialize_fonts
+    initialize_fonts(app)
     yield app
 
 
@@ -356,7 +358,7 @@ class TestTray:
         store = SecretStore(tmp_path / "secrets.toml")
         monkeypatch.setattr(store, "_keyring", lambda: None)
         dialog = IntegrationDialog(config, on_saved=lambda _settings: None, store=store)
-        steps = dialog.findChild(QLabel, "webhook-steps")
+        steps = dialog.findChild(QWidget, "webhook-steps")
         shape = dialog.findChild(QLabel, "webhook-url-shape")
         assert steps is not None and shape is not None
 
@@ -365,8 +367,12 @@ class TestTray:
             dialog.kind.setCurrentIndex(index)
             kind = str(dialog.kind.currentData())
             # Every service gets real steps, not a fallback or a raw i18n key.
-            assert "<ol>" in steps.text() and "integration.steps" not in steps.text()
-            seen.add(steps.text())
+            text = " ".join(
+                steps.layout().itemAt(i).widget().findChild(QLabel, "webhook-step").text()
+                for i in range(steps.layout().count())
+            )
+            assert text and "integration.steps" not in text
+            seen.add(text)
             # A generic webhook has no fixed URL shape, so that line goes away.
             assert shape.isVisibleTo(dialog) is (kind != "generic")
             if kind == "slack":

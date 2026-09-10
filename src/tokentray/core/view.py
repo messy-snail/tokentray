@@ -36,6 +36,15 @@ PROVIDER_ORDER = ("claude", "codex")
 
 
 @dataclass
+class DetailItem:
+    """A panel field with independently rendered label and value."""
+
+    key: str
+    label: str
+    value: str
+
+
+@dataclass
 class WindowRow:
     """One rendered rate-limit window."""
 
@@ -51,6 +60,8 @@ class WindowRow:
     pace: str
     pace_icon: str
     stats: compute.WindowStats
+    details: list[DetailItem] = field(default_factory=list)
+    detail_status: str = ""
 
 
 @dataclass
@@ -118,11 +129,35 @@ def build_view(snapshot: Snapshot, now: datetime | None = None) -> ProviderView:
                 pace=i18n.t("fmt.pace", pace=stats.pace) if stats.pace is not None else "",
                 pace_icon=compute.pace_icon(stats.pace),
                 stats=stats,
+                details=_detail_items(stats, now),
+                detail_status=(
+                    i18n.t("status.window_reset")
+                    if stats.secs_until_reset is not None and stats.secs_until_reset <= 0
+                    else ""
+                ),
             )
         )
 
     view.notes = _notes(snapshot)
     return view
+
+
+def _detail_items(stats: compute.WindowStats, now: datetime) -> list[DetailItem]:
+    if stats.secs_until_reset is not None and stats.secs_until_reset <= 0:
+        return []
+    items: list[DetailItem] = []
+    duration = compute.format_duration(stats.secs_until_reset)
+    if duration:
+        local = compute.format_local_reset(stats.window.resets_at, now)
+        value = f"{duration} ({local})" if local else duration
+        items.append(DetailItem("refills", i18n.t("label.refills"), value))
+    duration = compute.format_duration(stats.burnout_secs)
+    if duration and not stats.exhausted:
+        items.append(DetailItem("burns", i18n.t("label.burns"), f"~{duration}"))
+    if stats.pace is not None:
+        value = f"{stats.pace}x {compute.pace_icon(stats.pace)}".strip()
+        items.append(DetailItem("pace", i18n.t("label.pace"), value))
+    return items
 
 
 def _refills_text(stats: compute.WindowStats, now: datetime) -> str:
