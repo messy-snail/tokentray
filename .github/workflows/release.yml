@@ -9,7 +9,26 @@ permissions:
   contents: write
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Check tag against package version
+        run: uv run --no-project python scripts/check_release_version.py
+
+  test:
+    needs: validate
+    uses: ./.github/workflows/tests.yml
+    permissions:
+      contents: read
+
   bundle:
+    needs: test
     strategy:
       fail-fast: false
       matrix:

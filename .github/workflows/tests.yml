@@ -1,33 +1,29 @@
-name: CI
+name: Tests
 
 on:
-  push:
-    branches: [main, dev]
-  pull_request:
+  workflow_call:
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
   test:
-    uses: ./.github/workflows/tests.yml
-
-  bundle:
-    # The packaged build has its own failure modes - a spec that picks the wrong
-    # executable, a missing icon, an entry point that never returns - and none of
-    # them show up in the unit suite. Building here means a tag is not the first
-    # time anyone finds out.
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-latest, macos-14]
+        # 3.12 is what .python-version pins, so it is what a developer's
+        # `uv run` actually uses; 3.11 and 3.13 are the supported edges.
+        python: ["3.11", "3.12", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Qt runtime libraries
         if: runner.os == 'Linux'
+        # PySide6 links these even when running headless under the offscreen
+        # platform plugin; without them `import PySide6.QtWidgets` fails. Kept
+        # in step with the release workflow's list.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -38,11 +34,8 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Build
-        run: uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/tokentray.spec
-
-      - name: Smoke test the bundle
-        shell: bash
+      - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: ./packaging/smoke.sh
+        run: uv run --python ${{ matrix.python }} pytest -q
+
