@@ -17,6 +17,7 @@ import logging
 import os
 import socket
 import sys
+import time
 from typing import Callable
 
 from .core import paths
@@ -80,8 +81,33 @@ def _send_windows(payload: bytes, timeout: float) -> dict | None:
     with handle:
         handle.write(payload)
         handle.flush()
-        raw = handle.readline()
+        raw = _read_reply(handle, timeout)
     return json.loads(raw.decode("utf-8")) if raw else None
+
+
+def _read_reply(handle, timeout: float) -> bytes:
+    """Read the newline-terminated reply in blocks, like the Unix client does.
+
+    ``buffering=0`` hands back a raw file, and its ``readline`` asks for a
+    single byte at a time. The server answers and closes in the same breath, so
+    one of those one-byte reads can land on a pipe that is already going away
+    and fail the whole exchange - reliably enough to show up as a flaky test,
+    though only when caller and server share a process. Reading in blocks
+    tolerates it, because the bytes are in the pipe before the close.
+    """
+    deadline = time.monotonic() + timeout
+    chunks: list[bytes] = []
+    while time.monotonic() < deadline:
+        try:
+            chunk = handle.read(4096)
+        except OSError:
+            break
+        if not chunk:
+            break
+        chunks.append(chunk)
+        if b"\n" in chunk:
+            break
+    return b"".join(chunks).strip()
 
 
 def _send_unix(payload: bytes, timeout: float) -> dict | None:
