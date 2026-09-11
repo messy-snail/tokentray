@@ -213,10 +213,11 @@ arm64 전용이며 Intel 빌드는 없습니다. CLI는 번들 안에 들어 있
 있습니다. `tokentray` 명령으로 바로 실행하려면 PATH에 심볼릭 링크를 추가하세요.
 Claude Code 로그인 정보가 키체인에 저장된 경우, 처음 읽을 때 접근 허용 창이 나타날 수 있습니다.
 
-**Linux.** 배포 형식은 tar 압축 파일이며 `.deb`, AppImage, Flatpak은 제공하지 않습니다. 압축을
-푼 뒤 `./install.sh`를 실행하면 런처 항목과 아이콘이 등록됩니다(사용자 단위, root
-불필요. `./install.sh --uninstall`로 제거). GNOME의 트레이 표시에는 AppIndicator 확장이
-필요하고, KDE는 기본으로 지원합니다. 일부 배포판에서는 `libxcb-cursor0` 설치가 필요합니다.
+**Linux.** 빌드는 x86_64 전용입니다. 배포 형식은 tar 압축 파일이며 `.deb`, AppImage,
+Flatpak은 제공하지 않습니다. 압축을 푼 뒤 `./install.sh`를 실행하면 런처 항목과 아이콘이
+등록됩니다(사용자 단위, root 불필요. `./install.sh --uninstall`로 제거). GNOME의 트레이
+표시에는 AppIndicator 확장이 필요하고, KDE는 기본으로 지원합니다. 일부 배포판에서는
+`libxcb-cursor0` 설치가 필요합니다.
 Wayland에서는 팝업 위치 제어가 제한되므로 기본적으로 XWayland를 거쳐 실행합니다.
 네이티브 Wayland와 알림 센터 알림을 사용하려면 `linux.force_xwayland = false`로 바꾸세요.
 SecretService 등 키링 서비스를 사용할 수 없으면 시크릿을 소유자 전용 권한의 로컬 파일에

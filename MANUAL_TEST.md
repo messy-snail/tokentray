@@ -10,10 +10,12 @@ Legend: **W** Windows 11 · **M** macOS · **L** Ubuntu (both GNOME/Wayland and 
 
 Some of this no longer needs a person. `tests/test_platform.py` covers the
 autostart backends, both IPC transports and the Wayland plugin choice on every
-CI runner, and `scripts/verify-linux.sh` covers items 19, 22, 25-27 and 30 plus
-the Qt library and Korean font prerequisites on a real Linux box. What is left
-below is what only eyes can settle: whether the icon reads at 16 px, whether the
-toast landed in the right corner, whether Korean text fits its box.
+CI runner, and `scripts/verify-linux.sh` covers items 19 (under `--gui`), 22, 27
+and 30 plus the Qt library and Korean font prerequisites on a real Linux box.
+Items 25 and 26 are not automated: nothing logs a CLI out or removes
+`auth.json` for you. What is left below is what only eyes can settle: whether
+the icon reads at 16 px, whether the toast landed in the right corner, whether
+Korean text fits its box.
 
 ## Tray presence
 
@@ -65,7 +67,7 @@ successful test message does not by itself verify threshold or reset reminders.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
-| 14a | With `native_notifications false`, custom cards appear at the top on macOS and the bottom elsewhere by default. Set `popup.position` to `bottom-right` then `top-right`, each followed by "Test notification": the card moves without a restart and stays at the right edge. Restore native notifications afterward. OS banner placement is system-controlled. | ☐ | ☐ | ☐ |
+| 14d | With `native_notifications false`, custom cards appear at the top on macOS and the bottom elsewhere by default. Set `popup.position` to `bottom-right` then `top-right`, each followed by "Test notification": the card moves without a restart and stays at the right edge. Restore native notifications afterward. OS banner placement is system-controlled. | ☐ | ☐ | ☐ |
 | 15 | Switch the OS between light and dark, restart, and confirm the toast and panel follow. | ☐ | ☐ | ☐ |
 | 16 | Switch the language in the tray menu; the menu, panel and next toast are all translated. | ☐ | ☐ | ☐ |
 | 17 | Korean text renders without missing glyphs or clipping. | ☐ | ☐ | ☐ |

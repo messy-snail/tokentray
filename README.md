@@ -225,11 +225,11 @@ bundle, so `status`, `doctor` and `autostart` are at
 PATH to use `tokentray` directly. If Claude Code credentials are stored in the
 login keychain, the first read may show a keychain access prompt.
 
-**Linux.** Shipped as a tarball only - no `.deb`, AppImage or Flatpak. Run
-`./install.sh` from the unpacked archive to get a launcher entry and an icon
-(per-user, no root; `./install.sh --uninstall` reverses it). GNOME needs the
-AppIndicator extension for a tray at all; KDE works out of the box. Some
-distributions need `libxcb-cursor0` installed. Under
+**Linux.** Builds are x86_64 only. Shipped as a tarball only - no `.deb`,
+AppImage or Flatpak. Run `./install.sh` from the unpacked archive to get a
+launcher entry and an icon (per-user, no root; `./install.sh --uninstall`
+reverses it). GNOME needs the AppIndicator extension for a tray at all; KDE
+works out of the box. Some distributions need `libxcb-cursor0` installed. Under
 Wayland, tokentray runs through XWayland by default because Wayland gives
 clients limited control over popup placement. Set `linux.force_xwayland = false`
 for native Wayland and notification-centre alerts. Without a working keyring
