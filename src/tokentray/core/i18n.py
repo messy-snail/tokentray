@@ -74,9 +74,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.menu_bar_manager": "Using a menu bar manager like Bartender, "
                                     "Ice or Hidden Bar? You may need to unhide "
                                     "tokentray there.",
-        "test.body": "Notifications are working. This is what an alert looks like.",
-        "test.claude_body": "5-Hour Session: 62% remaining",
-        "test.codex_body": "Codex 7d: 38% remaining",
+        "test.title": "tokentray · Notification test",
+        "test.loading": "Fetching usage for notification…",
+        "test.failed": "Could not fetch usage. Please try again.",
+        "test.disabled": "Disabled",
+        "test.previous_data": "Previous data",
         # integration settings
         "integration.title": "Notification integrations",
         "integration.intro": "Send tokentray alerts to one Slack, Discord, ntfy, or generic webhook.",
@@ -176,9 +178,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.menu_bar_manager": "Bartender, Ice, Hidden Bar 같은 메뉴 막대 관리 "
                                     "앱을 쓰고 있다면 거기서 tokentray를 보이도록 "
                                     "설정해야 할 수 있어요.",
-        "test.body": "알림이 정상 동작합니다. 실제 알림은 이런 모습이에요.",
-        "test.claude_body": "5시간 세션: 62% 남음",
-        "test.codex_body": "Codex 7일: 38% 남음",
+        "test.title": "tokentray · 알림 테스트",
+        "test.loading": "알림용 사용량 조회 중…",
+        "test.failed": "사용량을 조회하지 못했습니다. 다시 시도해 주세요.",
+        "test.disabled": "비활성화",
+        "test.previous_data": "이전 데이터",
         # integration settings
         "integration.title": "알림 연동 설정",
         "integration.intro": "tokentray 알림을 Slack, Discord, ntfy 또는 일반 웹훅 한 곳으로 보냅니다.",

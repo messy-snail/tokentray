@@ -1,14 +1,7 @@
-"""Toast notifications drawn by us rather than by the OS.
+"""Custom notification cards with quota meters and recovery actions.
 
-Native notifications are the obvious choice and the wrong one here: macOS only
-delivers them from a signed bundle, Windows needs a registered AppUserModelID
-and silently swallows the legacy balloon path under Focus Assist, and the three
-platforms disagree about styling. A window we draw ourselves looks the same
-everywhere, always appears, and can show a progress meter — which is most of
-what the message is.
-
-The OS notification centre is still used as a secondary channel; see
-``notify.dispatcher``.
+These are the default Windows presentation, with optional native delivery
+controlled by ``notify.dispatcher``.
 """
 
 from __future__ import annotations
@@ -38,7 +31,9 @@ from PySide6.QtWidgets import (
 
 from ..core.alerts import AlertEvent
 from ..core.i18n import t
-from ..notify.formatting import summarize
+from ..core.models import Status
+from ..core.view import ProviderView, WindowRow
+from ..notify.formatting import provider_name, summarize, usage_preview_contents
 from . import theme
 from .provider_icons import ProviderMark
 
@@ -97,6 +92,7 @@ class Toast(QWidget):
         sticky: bool = False,
         provider: str | None = None,
         actions: list[tuple[str, Callable[[], None]]] | None = None,
+        usage_rows: list[WindowRow] | None = None,
     ) -> None:
         super().__init__(None)
         self._palette = theme.current()
@@ -114,7 +110,7 @@ class Toast(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
-        self._build(title, body, tier, fraction, detail, actions or [])
+        self._build(title, body, tier, fraction, detail, actions or [], usage_rows or [])
 
         self._dismiss = QTimer(self)
         self._dismiss.setSingleShot(True)
@@ -134,6 +130,7 @@ class Toast(QWidget):
         fraction: float | None,
         detail: str,
         actions: list[tuple[str, Callable[[], None]]],
+        usage_rows: list[WindowRow],
     ) -> None:
         palette = self._palette
         accent = palette.tier(tier)
@@ -212,12 +209,26 @@ class Toast(QWidget):
         header.addWidget(close, 0, Qt.AlignmentFlag.AlignTop)
         content.addLayout(header)
 
-        message = QLabel(body, card)
-        message.setWordWrap(True)
-        message.setStyleSheet(
-            f"font-family: {theme.FONT_STACK}; font-size: 14px; font-weight: 600;"
-        )
-        content.addWidget(message)
+        if body:
+            message = QLabel(body, card)
+            message.setWordWrap(True)
+            message.setStyleSheet(
+                f"font-family: {theme.FONT_STACK}; font-size: 14px; font-weight: 600;"
+            )
+            content.addWidget(message)
+
+        for usage in usage_rows:
+            text = QLabel(f"{usage.label}: {usage.detail_status or usage.remaining_text}", card)
+            text.setWordWrap(True)
+            text.setStyleSheet(f"font-family: {theme.FONT_STACK}; font-size: 14px; font-weight: 600;")
+            content.addWidget(text)
+            if not usage.detail_status:
+                content.addWidget(_Meter(usage.remaining / 100, palette.tier(usage.tier), palette.track))
+            if usage.refills:
+                reset = QLabel(usage.refills, card)
+                reset.setObjectName("muted")
+                reset.setWordWrap(True)
+                content.addWidget(reset)
 
         if fraction is not None:
             content.addWidget(_Meter(fraction, accent, palette.track))
@@ -363,6 +374,21 @@ class ToastManager:
                              if event.login_required and event.provider and self.login_actions else None),
                 )
             )
+
+    def show_usage_preview(self, views: list[ProviderView], *, disabled: set[str]) -> None:
+        """Show one provider card with a labelled meter for each known limit."""
+        by_provider = {view.provider: view for view in views}
+        for provider, body in usage_preview_contents(views, disabled=disabled).items():
+            view = by_provider.get(provider)
+            rows = view.rows if view and view.status.has_data and provider not in disabled else []
+            previous = bool(rows) and view.status in (Status.CACHED, Status.STALE)
+            self.show(Toast(
+                title=t("fmt.notify_title", provider=provider_name(provider)),
+                provider=provider, body="" if rows else body, usage_rows=rows,
+                tier=view.tier if rows else "orange",
+                detail=t("test.previous_data") if previous else "",
+                duration=self.duration,
+            ))
 
     def show(self, toast: Toast) -> None:
         toast.closed.connect(self._forget)

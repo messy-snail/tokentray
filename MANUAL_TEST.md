@@ -33,8 +33,8 @@ toast landed in the right corner, whether Korean text fits its box.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
-| 8 | "Test notification" shows separate Claude Code and Codex toasts, each with the tokentray ring, provider name, tier-coloured stripe and progress meter. | ☐ | ☐ | ☐ |
-| 8a | "Test notification" also fires one OS notification-centre banner titled *tokentray*. On Windows and Linux confirm it appears. On macOS a missing banner is expected for an unsigned build - instead confirm the log records the attempt (**Open log**), so the absence is evidenced rather than silent. | ☐ | ☐ | ☐ |
+| 8 | "Test notification" disables the menu while fetching fresh usage, then shows Claude Code and Codex cards with a labelled meter per limit matching the updated panel. Repeated requests produce one preview; failures have no meters and cached values are marked as previous data. Automatic alert history and webhooks are unaffected. | ☐ | ☐ | ☐ |
+| 8a | Windows defaults to custom cards with no OS banner. Explicitly enabling native notifications instead sends one text summary banner. Linux/macOS retain custom plus optional native delivery; for unsigned macOS builds verify native attempt logs if no OS banner appears. | ☐ | ☐ | ☐ |
 | 9 | The toast does **not** steal focus - keep typing in an editor while it appears and confirm no keystrokes are lost. | ☐ | ☐ | ☐ |
 | 10 | It fades out on its own after ~8 s, and hovering it stops that countdown. | ☐ | ☐ | ☐ |
 | 11 | Clicking the toast opens the detail panel. | ☐ | ☐ | ☐ |
@@ -65,7 +65,7 @@ successful test message does not by itself verify threshold or reset reminders.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
-| 14a | Toasts appear at the top on macOS and the bottom elsewhere by default. `tokentray config set popup.position bottom-right` then top-right, each followed by "Test notification": the stack moves without a restart and stays hugging the right edge. | ☐ | ☐ | ☐ |
+| 14a | With `native_notifications false`, custom cards appear at the top on macOS and the bottom elsewhere by default. Set `popup.position` to `bottom-right` then `top-right`, each followed by "Test notification": the card moves without a restart and stays at the right edge. Restore native notifications afterward. OS banner placement is system-controlled. | ☐ | ☐ | ☐ |
 | 15 | Switch the OS between light and dark, restart, and confirm the toast and panel follow. | ☐ | ☐ | ☐ |
 | 16 | Switch the language in the tray menu; the menu, panel and next toast are all translated. | ☐ | ☐ | ☐ |
 | 17 | Korean text renders without missing glyphs or clipping. | ☐ | ☐ | ☐ |

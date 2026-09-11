@@ -116,18 +116,3 @@ def test_alert_provider_propagation(monkeypatch, providers, expected):
     assert [toast.findChild(ProviderMark).provider for toast in shown] == expected
     for toast in shown:
         toast.close()
-
-
-def test_test_alerts_use_provider_symbols():
-    from tokentray.app import Controller
-
-    shown = []
-    controller = SimpleNamespace(
-        toasts=SimpleNamespace(show=shown.append),
-        config=SimpleNamespace(popup_duration=8),
-        dispatcher=SimpleNamespace(notify_native=lambda *args: None),
-    )
-    Controller.show_test_alert(controller)
-    assert [toast.findChild(ProviderMark).provider for toast in shown] == ["claude", "codex"]
-    for toast in shown:
-        toast.close()

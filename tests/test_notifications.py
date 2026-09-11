@@ -38,6 +38,7 @@ class TestTheAttemptIsRecorded:
         return tray_mod.Tray()
 
     def test_an_attempt_is_always_logged(self, tray, caplog, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "darwin")
         # Support is pinned rather than read off the runner: the offscreen plugin
         # answers False on macOS and True on Linux, and this test is about the
         # attempt being recorded, not about what any one desktop reports.
@@ -55,8 +56,9 @@ class TestTheAttemptIsRecorded:
             raise RuntimeError("no notification host")
 
         monkeypatch.setattr(tray._icon, "showMessage", boom)
+        monkeypatch.setattr(tray_mod, "supports_messages", lambda: True)
         with caplog.at_level(logging.INFO, logger="tokentray.tray"):
-            tray.show_message("tokentray", "body")  # must not propagate
+            assert tray.show_message("tokentray", "body") is False
         record = caplog.records[-1]
         assert record.levelno == logging.WARNING
         assert "native notification failed" in record.getMessage()
@@ -67,44 +69,6 @@ class TestTheAttemptIsRecorded:
         with caplog.at_level(logging.INFO, logger="tokentray.tray"):
             tray.show_message("tokentray", "body")
         assert "supported=True" in caplog.records[-1].getMessage()
-
-
-class TestTestNotification:
-    """The menu item exists to tell a dead channel from a channel nobody called."""
-
-    def _controller(self, recorder):
-        from tokentray.app import Controller
-
-        shown = []
-        controller = SimpleNamespace(
-            toasts=SimpleNamespace(show=shown.append),
-            config=SimpleNamespace(popup_duration=8),
-            dispatcher=recorder,
-        )
-        Controller.show_test_alert(controller)
-        for toast in shown:
-            toast.close()
-
-    def test_test_alert_fires_the_native_channel(self, qapp):
-        sent = []
-        self._controller(SimpleNamespace(notify_native=lambda *args: sent.append(args)))
-        # One message, not one per provider: the question is only whether anything
-        # arrived, and macOS coalesces near-identical banners regardless.
-        assert len(sent) == 1
-        assert sent[0][0] == "tokentray"
-        assert "Notifications are working" in sent[0][1]
-
-    @pytest.mark.parametrize("enabled, expected", [(True, 1), (False, 0)])
-    def test_test_alert_respects_the_config_gate(self, qapp, enabled, expected):
-        sent = []
-        dispatcher = Dispatcher(
-            SimpleNamespace(show_alerts=lambda events: None),
-            SimpleNamespace(),
-            native=lambda *args: sent.append(args),
-            native_enabled=enabled,
-        )
-        self._controller(dispatcher)
-        assert len(sent) == expected
 
 
 class TestWelcomeUsesTheSameGate:

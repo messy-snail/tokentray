@@ -135,7 +135,7 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 | `language` | 시스템 언어 | `en` 또는 `ko` |
 | `popup.position` | `auto` | 팝업이 쌓이는 모서리: `auto`, `bottom-right`, `top-right`. `auto`는 플랫폼을 따라 macOS는 위, 나머지는 아래 |
 | `popup.duration` | `8` | 팝업 표시 시간(초) |
-| `native_notifications` | `true` | OS 알림 센터로도 함께 보내기(**Test notification**에도 적용) |
+| `native_notifications` | Windows: `false`, 그 외: `true` | Windows OS 알림 선택, 다른 플랫폼은 추가 전송. 알림 테스트에도 적용 |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | 외부 알림 활성화 및 `slack`, `discord`, `ntfy`, `generic` 중 선택 |
 | `codex.refresh` | `false` | tokentray가 Codex 토큰을 갱신하도록 허용 |
 | `linux.force_xwayland` | `true` | 아래 참고 |
@@ -166,9 +166,21 @@ Slack 발신자 이름과 아이콘은 웹훅을 만든 Slack 앱 설정을 따�
 
 ## 알림 방식
 
-남은 사용량을 게이지가 포함된 데스크톱 팝업으로 보여줍니다. OS 알림 센터와 설정한
-외부 서비스로도 알림을 보낼 수 있습니다. 자체 팝업은 운영체제에 관계없이 일관된 형식으로
-표시하며, OS 알림은 운영체제의 지원 여부와 알림 설정에 따라 표시됩니다.
+Windows에서는 서비스 아이콘과 진행률 막대가 있는 자체 카드를 기본으로 사용합니다.
+**알림 테스트**는 백그라운드에서 새로 조회한 Claude Code·Codex의 한도별 잔량을
+서비스별 카드로 보여주며, 각 한도에 잔량 막대와 리셋 시간을 표시합니다.
+조회 중에는 테스트 메뉴가 비활성화되고 반복 요청은 하나로
+합칩니다. 조회할 수 없는 서비스는 상태를 표시하고, 캐시 결과는 이전 데이터임을 명시합니다.
+테스트는 패널을 갱신하지만 자동 알림을 발송하거나 발화 기록을 변경하거나 웹훅을 보내지
+않습니다. `native_notifications = true`로 설정하면 Windows OS 알림을 대신 사용하며,
+테스트에서는 텍스트 요약 하나를 표시합니다.
+OS 알림 미지원이나 전송 호출 오류가 확인되면 자체 카드로 대체합니다. 호출 성공이 실제
+배너 표시를 보장하지는 않습니다. OS 배너 위치와 표시 시간은 Windows가 제어하고,
+`popup.position`과 `popup.duration`은 자체 카드에만 적용됩니다.
+
+최초 안내와 로그인 복구 알림이 포함된 묶음은 기존 버튼과 묶음 처리를 유지하기 위해
+자체 카드로 표시하며 Windows 배너를 추가하지 않습니다. macOS와 Linux는 자체 카드와
+선택적 OS 알림을 함께 사용하는 기존 동작을 유지합니다. 외부 알림은 별도 설정에 따릅니다.
 
 macOS에서는 트레이 아이콘이 보내는 알림 센터 전달이 신뢰할 수 없습니다. Qt의 macOS
 백엔드가 Apple이 macOS 11에서 폐기한 알림 API를 아직 사용하고, macOS는 서명된 번들을

@@ -1,18 +1,21 @@
-"""Fan an alert out to every enabled channel.
+"""Route local alerts and independently deliver enabled webhook notifications.
 
-Keeping this in one place means the batching rule — a burst becomes one message,
-not five — applies identically to the on-screen toast, the OS notification and
-the webhook.
+Windows prefers native banners, retaining custom cards for recovery actions and
+submission failures. Other platforms use custom cards plus native delivery.
 """
 
 from __future__ import annotations
 
+import logging
+import sys
 from typing import Callable
 
 from ..core.alerts import AlertEvent
 from ..ui.popup import MAX_VISIBLE, ToastManager
 from .formatting import summarize
 from .webhook import Webhook
+
+log = logging.getLogger("tokentray.notify")
 
 
 class Dispatcher:
@@ -21,7 +24,7 @@ class Dispatcher:
         toasts: ToastManager,
         webhook: Webhook,
         *,
-        native: Callable[[str, str], None] | None = None,
+        native: Callable[[str, str], bool] | None = None,
         native_enabled: bool = True,
     ) -> None:
         self._toasts = toasts
@@ -35,23 +38,61 @@ class Dispatcher:
     def emit(self, events: list[AlertEvent]) -> None:
         if not events:
             return
-        self._toasts.show_alerts(events)
+        self._emit_local(events)
 
         if len(events) > MAX_VISIBLE:
             summary = summarize(events)
-            self.notify_native(summary.title, summary.body)
             self._webhook.send_summary(
                 summary.title, summary.body, _worst_priority(events), detail=summary.detail
             )
             return
 
         for event in events:
-            self.notify_native(event.title, event.body)
             self._webhook.send(event)
 
-    def notify_native(self, title: str, body: str) -> None:
+    def present(
+        self, title: str, body: str, show_custom: Callable[[], None],
+        *, force_custom: bool = False,
+    ) -> None:
+        """Choose a local channel without duplicating Windows banners."""
+        if sys.platform == "win32":
+            if force_custom or not self.notify_native(title, body):
+                show_custom()
+        else:
+            show_custom()
+            self.notify_native(title, body)
+
+    def _emit_local(self, events: list[AlertEvent]) -> None:
+        if sys.platform != "win32" or any(e.login_required for e in events):
+            self._toasts.show_alerts(events)
+            if sys.platform == "win32":
+                return
+            if len(events) > MAX_VISIBLE:
+                summary = summarize(events)
+                self.notify_native(summary.title, summary.body)
+            else:
+                for event in events:
+                    self.notify_native(event.title, event.body)
+            return
+
+        if len(events) > MAX_VISIBLE:
+            summary = summarize(events)
+            self.present(summary.title, summary.body, lambda: self._toasts.show_alerts(events))
+        else:
+            for event in events:
+                self.present(
+                    event.title, event.body,
+                    lambda event=event: self._toasts.show_alerts([event]),
+                )
+
+    def notify_native(self, title: str, body: str) -> bool:
+        """Return whether submission succeeded, not whether a banner appeared."""
         if self._native_enabled and self._native is not None:
-            self._native(title, body)
+            try:
+                return self._native(title, body)
+            except Exception:
+                log.warning("native notification failed: %s", title, exc_info=True)
+        return False
 
 
 def _worst_priority(events: list[AlertEvent]) -> str:

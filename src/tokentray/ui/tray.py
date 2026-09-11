@@ -55,6 +55,7 @@ class Tray(QObject):
         self._icon.setIcon(icons.build_icon())
         self._icon.setToolTip("tokentray")
         self._paused = False
+        self._test_pending = False
         self._retries = 0
         self._menu: QMenu | None = None
         self._build_menu()
@@ -97,20 +98,16 @@ class Tray(QObject):
         self._icon.setIcon(icons.build_icon(views))
         self._icon.setToolTip(tooltip(views))
 
-    def show_message(self, title: str, body: str) -> None:
-        """Secondary delivery through the OS notification centre.
+    def show_message(self, title: str, body: str) -> bool:
+        """Submit an OS notification; True does not confirm visible delivery.
 
-        Best effort by design: it is suppressed by Focus Assist on Windows and
-        needs a signed bundle on macOS, which is exactly why the custom toast is
-        the primary channel rather than this.
-
-        The failure mode is silence - Qt's macOS backend returns without raising
-        and without delivering - so the log line is the only thing separating a
-        broken channel from a channel nobody asked to use. It says "attempted"
-        rather than "sent" because Qt cannot confirm delivery on any platform, and
-        claiming otherwise is how this went unnoticed in the first place.
+        Windows uses this as its primary channel. Other platforms retain custom
+        cards alongside best-effort native delivery, including unsupported hosts.
         """
         supported = supports_messages()
+        if sys.platform == "win32" and not supported:
+            log.info("native notification unavailable (supported=False): %s", title)
+            return False
         try:
             self._icon.showMessage(title, body, icons.app_icon(), MESSAGE_TIMEOUT_MS)
         except Exception:
@@ -120,8 +117,9 @@ class Tray(QObject):
                 title,
                 exc_info=True,
             )
-            return
+            return False
         log.info("native notification attempted (supported=%s): %s", supported, title)
+        return True
 
     def set_autostart_checked(self, enabled: bool) -> None:
         self._autostart_action.blockSignals(True)
@@ -135,6 +133,11 @@ class Tray(QObject):
     def retranslate(self) -> None:
         """Rebuild the menu after a language change."""
         self._build_menu()
+
+    def set_test_pending(self, pending: bool) -> None:
+        self._test_pending = pending
+        self._test_action.setEnabled(not pending)
+        self._test_action.setText(t("test.loading" if pending else "menu.test_alert"))
 
     # -- internals -------------------------------------------------------------
 
@@ -157,9 +160,10 @@ class Tray(QObject):
         self._pause_action.triggered.connect(self.pause_toggled.emit)
         menu.addAction(self._pause_action)
 
-        test = QAction(t("menu.test_alert"), menu)
-        test.triggered.connect(self.test_requested.emit)
-        menu.addAction(test)
+        self._test_action = QAction(menu)
+        self.set_test_pending(self._test_pending)
+        self._test_action.triggered.connect(self.test_requested.emit)
+        menu.addAction(self._test_action)
 
         integration = QAction(t("menu.integration"), menu)
         integration.triggered.connect(self.integration_requested.emit)

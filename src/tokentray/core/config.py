@@ -8,6 +8,7 @@ the user nowhere to fix the problem from.
 from __future__ import annotations
 
 import copy
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -25,7 +26,7 @@ DEFAULTS: dict[str, Any] = {
     "poll_interval": 120,
     "thresholds": [50, 25, 10],
     "remind_before": [60, 30, 10],
-    "native_notifications": True,
+    "native_notifications": sys.platform != "win32",
     "popup": {
         "position": "auto",   # see POPUP_POSITIONS
         "duration": 8,

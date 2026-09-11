@@ -23,7 +23,6 @@ from PySide6.QtCore import (
     QThread,
     QTimer,
     QUrl,
-    Signal,
     Slot,
 )
 from PySide6.QtGui import QDesktopServices
@@ -32,10 +31,10 @@ from PySide6.QtWidgets import QApplication
 from . import autostart, bootstrap, ipc
 from .core import i18n, paths, state
 from .core.alerts import AlertState, evaluate
-from .core.cache import Cache
 from .core.config import Config
-from .core.models import Status
+from .core.models import Snapshot
 from .core.view import ProviderView, build_view
+from .polling import PollWorker
 
 log = logging.getLogger("tokentray")
 
@@ -79,52 +78,6 @@ def main(autostart_launch: bool = False, **kwargs: Any) -> int:
     return app.exec()
 
 
-class PollWorker(QObject):
-    """Fetches every provider, one poll at a time, off the UI thread."""
-
-    snapshots_ready = Signal(list)
-    refresh_finished = Signal(bool)
-    requested = Signal(bool)
-
-    def __init__(self, config: Config) -> None:
-        super().__init__()
-        from .providers import build_providers
-
-        self._providers = build_providers(config, Cache())
-        self._busy = False
-        self._pending: bool | None = None
-        self.requested.connect(self._run)
-
-    @Slot(bool)
-    def _run(self, force: bool) -> None:
-        # A slow network must not queue polls behind each other: keep at most one
-        # pending request and collapse any others into it.
-        if self._busy:
-            self._pending = force or bool(self._pending)
-            return
-        self._busy = True
-        try:
-            while True:
-                snapshots = [p.fetch(force=force) for p in self._providers]
-                self.snapshots_ready.emit(snapshots)
-                if force:
-                    self.refresh_finished.emit(all(s.status == Status.OK for s in snapshots))
-                if self._pending is None:
-                    return
-                force, self._pending = self._pending, None
-        except Exception:
-            log.exception("poll failed")
-            if force:
-                self.refresh_finished.emit(False)
-        finally:
-            self._busy = False
-
-    @Slot()
-    def shutdown(self) -> None:
-        for provider in self._providers:
-            provider.close()
-
-
 class Controller(QObject):
     """Owns application state and connects the pieces.
 
@@ -142,6 +95,7 @@ class Controller(QObject):
         self.config = config
         self.autostart_launch = autostart_launch
         self.views: list[ProviderView] = []
+        self._test_pending = False
 
         self._state = state.load()
         self.alerts = AlertState.from_dict(self._state.get("alerts"))
@@ -180,6 +134,7 @@ class Controller(QObject):
         self._worker = PollWorker(config)
         self._worker.moveToThread(self._thread)
         self._worker.snapshots_ready.connect(self._on_snapshots)
+        self._worker.test_finished.connect(self._on_test_finished)
         self._worker.refresh_finished.connect(self.panel.refresh_feedback.finish)
 
         self._timer = QTimer(self.app)
@@ -245,20 +200,22 @@ class Controller(QObject):
     def refresh(self, *, force: bool) -> None:
         self._worker.requested.emit(force)
 
-    def _on_snapshots(self, snapshots: list) -> None:
+    def _update_views(self, snapshots: list[Snapshot]) -> None:
         now = datetime.now(timezone.utc)
         self.views = [build_view(snapshot, now) for snapshot in snapshots]
         self.recovery.on_views(self.views)
         self.tray.update_views(self.views)
         self.panel.update_views(self.views)
 
+    def _on_snapshots(self, snapshots: list) -> None:
+        self._update_views(snapshots)
         events = evaluate(
             self.views,
             thresholds=self.config.thresholds,
             remind_before=self.config.remind_before,
             state=self.alerts,
             now=time.time(),
-            clock=now,
+            clock=datetime.now(timezone.utc),
         )
         self.dispatcher.emit(events)
         self._save_state()
@@ -281,31 +238,36 @@ class Controller(QObject):
         self.panel.popup_at(self.tray.geometry())
 
     def show_test_alert(self) -> None:
+        if self._test_pending:
+            return
+        self._test_pending = True
+        self.tray.set_test_pending(True)
+        self._worker.test_requested.emit()
+
+    @Slot(object)
+    def _on_test_finished(self, snapshots: list[Snapshot] | None) -> None:
+        from .notify.formatting import usage_preview
         from .ui.popup import Toast
 
-        samples = (
-            ("claude", "Claude Code", "test.claude_body", "green", 0.62, "3h 42m"),
-            ("codex", "Codex", "test.codex_body", "orange", 0.38, "2d 7h"),
-        )
-        for provider_id, provider, body_key, tier, fraction, reset in samples:
-            self.toasts.show(
-                Toast(
-                    title=i18n.t("fmt.notify_title", provider=provider),
-                    provider=provider_id,
-                    body=i18n.t(body_key),
-                    tier=tier,
-                    fraction=fraction,
-                    detail=i18n.t("fmt.refills", dur=reset),
-                    duration=self.config.popup_duration,
-                )
-            )
-
-        # Also poke the OS notification centre. The toasts above prove the app can
-        # draw, which is exactly what still works when the native channel is dead;
-        # only this line can tell those two failures apart. One message, not one
-        # per provider: macOS coalesces near-identical banners anyway, and the
-        # question is just whether anything arrived at all.
-        self.dispatcher.notify_native(i18n.t("notify.info_title"), i18n.t("test.body"))
+        if not self._test_pending:
+            return
+        try:
+            if snapshots is None:
+                title, body = i18n.t("test.title"), i18n.t("test.failed")
+                show_custom = lambda: self.toasts.show(Toast(
+                    title=title, body=body, tier="orange", duration=self.config.popup_duration,
+                ))
+            else:
+                self._update_views(snapshots)
+                disabled = {key for key in ("claude", "codex")
+                            if not self.config.get(f"{key}.enabled", True)}
+                preview = usage_preview(self.views, disabled=disabled)
+                title, body = preview.title, preview.body
+                show_custom = lambda: self.toasts.show_usage_preview(self.views, disabled=disabled)
+            self.dispatcher.present(title, body, show_custom)
+        finally:
+            self._test_pending = False
+            self.tray.set_test_pending(False)
 
     def show_integration_settings(self) -> None:
         from .ui.integration import IntegrationDialog
@@ -376,20 +338,22 @@ class Controller(QObject):
             detail = i18n.t("welcome.menu_bar_manager")
         actions.append((i18n.t("welcome.ack"), lambda: None))
 
-        self.toasts.show(
-            Toast(
-                title=i18n.t("welcome.title"),
-                body=i18n.t("welcome.body"),
-                detail=detail,
-                tier="green",
-                sticky=True,
-                actions=actions,
+        def show_welcome() -> None:
+            self.toasts.show(
+                Toast(
+                    title=i18n.t("welcome.title"),
+                    body=i18n.t("welcome.body"),
+                    detail=detail,
+                    tier="green",
+                    sticky=True,
+                    actions=actions,
+                )
             )
+
+        self.dispatcher.present(
+            i18n.t("welcome.title"), i18n.t("welcome.body"),
+            show_welcome, force_custom=True,
         )
-        # Through the dispatcher, not the tray directly: somebody who set
-        # native_notifications = false should not be handed an OS banner on
-        # their very first run.
-        self.dispatcher.notify_native(i18n.t("welcome.title"), i18n.t("welcome.body"))
         self._state["welcomed"] = True
         self._save_state()
 

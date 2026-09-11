@@ -140,7 +140,7 @@ position and duration, and `native_notifications` all apply straight away;
 | `language` | from locale | `en` or `ko` |
 | `popup.position` | `auto` | Which corner toasts stack from: `auto`, `bottom-right`, `top-right`. `auto` follows the platform - top on macOS, bottom elsewhere |
 | `popup.duration` | `8` | Seconds a toast stays up |
-| `native_notifications` | `true` | Also send to the OS notification centre; also used by **Test notification** |
+| `native_notifications` | Windows: `false`; others: `true` | Opt into OS alerts on Windows; additional OS delivery elsewhere. Also applies to **Test notification** |
 | `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | Enable external alerts and choose `slack`, `discord`, `ntfy`, or `generic` |
 | `codex.refresh` | `false` | Let tokentray refresh the Codex token |
 | `linux.force_xwayland` | `true` | See below |
@@ -174,10 +174,22 @@ Discord likewise lets you set the webhook avatar in the channel settings.
 
 ## Notifications
 
-tokentray shows desktop popups with a remaining-quota meter. It can also send
-alerts to the OS notification centre and your configured external destination.
-The custom popups keep the presentation consistent across platforms; OS alerts
-depend on platform support and notification settings.
+Windows uses custom quota cards by default, with provider icons and progress bars.
+**Test notification** fetches fresh usage in the background and shows one card per
+service, with a labelled remaining-quota meter and reset time for each limit.
+The test menu is disabled while fetching; repeated requests share that test.
+Unavailable services show their status, and cached results are marked as previous
+data. The test updates the panel without firing automatic alerts, changing their
+history, or sending webhooks. Set `native_notifications = true` to opt into
+Windows OS banners instead (one text summary for the test). Unsupported native delivery or a submission error also
+falls back to custom cards; a successful submission does not guarantee that
+Windows displays a banner. Windows controls native banner position and duration;
+`popup.position` and `popup.duration` apply only to custom cards.
+
+Welcome notices and batches containing login recovery alerts retain custom cards
+without an additional Windows banner, preserving their existing action buttons
+and grouping. macOS and Linux retain custom cards with optional OS delivery.
+External notifications follow their own settings independently.
 
 On macOS, notification-centre delivery from a tray icon is unreliable: Qt's macOS
 backend still uses the notification API Apple deprecated in macOS 11, and macOS
