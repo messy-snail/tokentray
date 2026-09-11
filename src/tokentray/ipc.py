@@ -168,7 +168,9 @@ class SingleInstance:
         if connection is None:
             return
         try:
-            if not connection.waitForReadyRead(READ_TIMEOUT_MS):
+            # Data may already be buffered before newConnection is delivered.
+            # Waiting for another arrival then times out on a complete command.
+            if connection.bytesAvailable() == 0 and not connection.waitForReadyRead(READ_TIMEOUT_MS):
                 return
             raw = bytes(connection.readAll()).decode("utf-8", "replace").strip()
             if not raw:
