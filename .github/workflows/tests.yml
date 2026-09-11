@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-14]
         # 3.12 is what .python-version pins, so it is what a developer's
         # `uv run` actually uses; 3.11 and 3.13 are the supported edges.
         python: ["3.11", "3.12", "3.13"]
