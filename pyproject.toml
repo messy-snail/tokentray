@@ -26,6 +26,7 @@ classifiers = [
 dependencies = [
     "httpx>=0.28",
     "typer>=0.15",
+    "rich>=13",
     "keyring>=25",
     "platformdirs>=4.3",
     "tomli-w>=1.0",

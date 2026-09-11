@@ -164,7 +164,7 @@ class TestSetupWizard:
         # claude: paste + token, codex: skip, then language, then no autostart/launch.
         self._answers(
             monkeypatch,
-            prompts=["p", "sk-pasted", "s", "ko"],
+            prompts=["ko", "p", "sk-pasted", "s"],
             confirms=[False, False],
         )
         config = Config({}, tmp_path / "config.toml")
@@ -175,7 +175,7 @@ class TestSetupWizard:
     def test_disabling_a_provider_is_persisted(self, isolated_config, monkeypatch, tmp_path):
         from tokentray.setup_wizard import run
 
-        self._answers(monkeypatch, prompts=["d", "s", "en"], confirms=[False, False])
+        self._answers(monkeypatch, prompts=["en", "d", "s"], confirms=[False, False])
         config = Config({}, tmp_path / "config.toml")
         run(config, SecretStore(tmp_path / "s.toml"), launch=False)
         assert config.get("claude.enabled") is False

@@ -37,12 +37,13 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.alerts import AlertEvent
+from ..core.i18n import t
 from ..notify.formatting import summarize
 from . import theme
 from .provider_icons import ProviderMark
 
 CARD_WIDTH = 372
-SHADOW_MARGIN = 20
+SHADOW_MARGIN = 40
 GAP = 10
 EDGE_MARGIN = 16
 MAX_VISIBLE = 3
@@ -322,6 +323,7 @@ class ToastManager:
         self._toasts: list[Toast] = []
         self._anchor = anchor_widget_geometry
         self.on_activated: Callable[[], None] | None = None
+        self.login_actions: Callable[[str], list] | None = None
 
     def show_alerts(self, events: list[AlertEvent]) -> None:
         """Display ``events``, collapsing a burst into a single summary card.
@@ -352,11 +354,13 @@ class ToastManager:
                 Toast(
                     title=event.title,
                     provider=event.provider,
-                    body=event.body,
+                    body=t("connect.expired_message") if event.login_required else event.body,
                     tier=event.tier,
                     fraction=(row.remaining / 100) if row else None,
                     detail=_detail_for(event),
                     duration=self.duration,
+                    actions=(self.login_actions(event.provider)
+                             if event.login_required and event.provider and self.login_actions else None),
                 )
             )
 
@@ -408,7 +412,7 @@ class ToastManager:
 
     def _slot(self, index: int, toast: Toast, area: QRect, from_top: bool) -> QPoint:
         x = area.right() - toast.width() + SHADOW_MARGIN - EDGE_MARGIN
-        offset = sum(t.height() - SHADOW_MARGIN + GAP for t in self._toasts[:index])
+        offset = sum(t.height() - SHADOW_MARGIN * 2 + GAP for t in self._toasts[:index])
         if from_top:
             y = area.top() - SHADOW_MARGIN + EDGE_MARGIN + offset
         else:

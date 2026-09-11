@@ -119,7 +119,35 @@ def test_refresh_repositions_and_keeps_button_working(qapp):
     assert area.contains(panel.geometry())
     panel.findChild(QPushButton, "panel-refresh").click()
     assert refreshed == [True]
+    assert panel.isVisible()
+    updated = views()
+    updated[0].rows[0].remaining_text = "17%"
+    panel.update_views(updated)
+    settle(qapp)
+    assert panel.isVisible()
+    assert any(label.text() == "17%" for label in panel.findChildren(QLabel))
+    assert area.contains(panel.geometry())
+    panel.close()
+
+
+def test_refresh_result_does_not_reopen_dismissed_panel(qapp):
+    refreshed = []
+    panel = DetailPanel(on_refresh=lambda: refreshed.append(True))
+    panel.update_views(views())
+    panel.popup_at(None)
+    panel.findChild(QPushButton, "panel-refresh").click()
+    assert refreshed == [True]
+    assert panel.isVisible()
+    panel.close()
+    updated = views()
+    updated[0].rows[0].remaining_text = "17%"
+    panel.update_views(updated)
+    settle(qapp)
     assert not panel.isVisible()
+    panel.popup_at(None)
+    settle(qapp)
+    assert any(label.text() == "17%" for label in panel.findChildren(QLabel))
+    panel.close()
 
 
 def test_reset_status_spans_detail_area(qapp):

@@ -35,6 +35,14 @@ def report(config) -> list[str]:
     from .providers.codex import auth_path
 
     lines = [f"tokentray {__version__}  (python {sys.version.split()[0]}, {sys.platform})"]
+    from .connections import inspect, NAMES
+    from .core.i18n import t
+
+    for key, name in NAMES.items():
+        connection = inspect(key, config)
+        cli = t("connect.detected" if connection.executable else "connect.not_found")
+        lines.append(f"{name}: CLI {cli}; {t('connect.' + connection.auth.value)} "
+                     f"({connection.source}); {t('connect.' + connection.action.value)}")
 
     claude_file = credentials_path()
     lines.append(f"claude credentials  {credential_state(claude_file, 'claude')}  {claude_file}")
@@ -72,10 +80,17 @@ def credential_state(path, provider: str) -> str:
             data = json.load(fh)
     except (OSError, ValueError):
         return "unreadable"
+    if not isinstance(data, dict):
+        return "unreadable"
     if provider == "claude":
-        token = (data.get("claudeAiOauth") or {}).get("accessToken")
+        block = data.get("claudeAiOauth") or {}
+        token_key = "accessToken"
     else:
-        token = (data.get("tokens") or {}).get("access_token")
+        block = data.get("tokens") or {}
+        token_key = "access_token"
+    if not isinstance(block, dict):
+        return "unreadable"
+    token = block.get(token_key)
     if not token:
         return "no token in file"
     return "found"

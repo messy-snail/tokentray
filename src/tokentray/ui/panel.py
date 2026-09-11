@@ -31,6 +31,8 @@ from .popup import SHADOW_MARGIN, _Meter, _rgba
 from .wrapping import WrappingLabel
 from .elided import ElidedLabel
 from .provider_icons import ProviderMark
+from .refresh_feedback import RefreshFeedback
+from .loading_overlay import LoadingOverlay
 
 PANEL_WIDTH = 340
 
@@ -41,10 +43,14 @@ class DetailPanel(QWidget):
     def __init__(self, on_refresh: Callable[[], None]) -> None:
         super().__init__(None)
         self._on_refresh = on_refresh
+        self.refresh_feedback = RefreshFeedback(self)
+        self.refresh_feedback.changed.connect(self._update_refresh_button)
         self._views: list[ProviderView] = []
+        self.recovery = None
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self._anchor: QRect | None = None
+        self.loading_overlay = LoadingOverlay(self)
         self._rebuild()
 
     def update_views(self, views: list[ProviderView]) -> None:
@@ -77,6 +83,7 @@ class DetailPanel(QWidget):
         self.move(QPoint(x, y))
         self.show()
         self.raise_()
+        self._update_overlay()
 
     # -- rendering -------------------------------------------------------------
 
@@ -156,10 +163,15 @@ class DetailPanel(QWidget):
             content_layout.addLayout(self._provider_block(view, self.content, palette))
 
         footer = QHBoxLayout()
+        self._refresh_status = QLabel(card)
+        self._refresh_status.setObjectName("refresh-status")
+        footer.addWidget(self._refresh_status)
         footer.addStretch(1)
         refresh = QPushButton(t("menu.refresh"), card)
         refresh.setObjectName("panel-refresh")
         refresh.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._refresh_button = refresh
+        self._update_refresh_button()
         refresh.clicked.connect(self._refresh_clicked)
         footer.addWidget(refresh)
         body.addLayout(footer)
@@ -172,7 +184,13 @@ class DetailPanel(QWidget):
         # Include the card's one-pixel border on both sides.
         width = PANEL_WIDTH - 34
         layout = self.content.layout()
-        natural = max(layout.totalHeightForWidth(width), layout.sizeHint().height())
+        natural = layout.totalHeightForWidth(width)
+        if natural < 0:
+            natural = layout.sizeHint().height()
+        if any(view.rows for view in self._views):
+            # Nested usage grids need the conservative hint; simple login cards
+            # can use their actual wrapped height without a large empty footer gap.
+            natural = max(natural, layout.sizeHint().height())
         footer_height = self._footer.sizeHint().height()
         height = natural + footer_height + 10 + 30 + SHADOW_MARGIN * 2
         self.setFixedHeight(min(height, area.height()))
@@ -202,7 +220,25 @@ class DetailPanel(QWidget):
         block.addLayout(head)
 
         if view.message:
-            block.addWidget(_muted(view.message, parent))
+            from ..core.models import Status
+
+            message = (t("connect.expired_message") if self.recovery is not None
+                       and view.status in (Status.EXPIRED, Status.UNAUTHORIZED) else view.message)
+            block.addWidget(_muted(message, parent))
+
+        if self.recovery is not None:
+            from ..login_recovery import AUTH_REQUIRED
+
+            session = self.recovery.sessions[view.provider]
+            if view.status in AUTH_REQUIRED or session.waiting or session.message:
+                block.addWidget(_muted(self.recovery.message(view.provider), parent))
+                buttons = QHBoxLayout()
+                for label, handler in self.recovery.actions(view.provider):
+                    button = QPushButton(label, parent)
+                    button.setProperty("connection-action", True)
+                    button.clicked.connect(lambda _=False, fn=handler: fn())
+                    buttons.addWidget(button)
+                block.addLayout(buttons)
 
         for row in view.rows:
             line = QHBoxLayout()
@@ -245,8 +281,31 @@ class DetailPanel(QWidget):
         return block
 
     def _refresh_clicked(self) -> None:
-        self.hide()
-        self._on_refresh()
+        if self.refresh_feedback.start():
+            self._on_refresh()
+
+    def _update_refresh_button(self) -> None:
+        button = self._refresh_button
+        feedback = self.refresh_feedback
+        button.setText(t("menu.refresh"))
+        button.setEnabled(not feedback.busy)
+        button.ensurePolished()
+        metrics = button.fontMetrics()
+        button.setFixedWidth(metrics.horizontalAdvance(t("menu.refresh")) + 28)
+        result = feedback.state in ("done", "failed")
+        self._refresh_status.setText(feedback.text if result else "")
+        color = theme.current().tier("green" if feedback.state == "done" else "orange")
+        self._refresh_status.setStyleSheet(f"color: {color.name()}; font-size: 12px;")
+        self._update_overlay()
+
+    def _update_overlay(self) -> None:
+        self.loading_overlay.setGeometry(self.rect().adjusted(
+            SHADOW_MARGIN, SHADOW_MARGIN, -SHADOW_MARGIN, -SHADOW_MARGIN))
+        self.loading_overlay.set_busy(self.refresh_feedback.busy)
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_overlay()
 
 
 def _muted(text: str, parent: QWidget) -> QLabel:

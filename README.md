@@ -66,8 +66,15 @@ Then:
 tokentray setup
 ```
 
-Setup detects the logins you already have, picks a language from your desktop
-locale, and offers to start tokentray at login.
+Setup first asks for a language, then shows CLI availability and credential status
+separately. Install and sign in to [Claude Code](https://code.claude.com/docs/en/setup)
+or [Codex](https://developers.openai.com/codex/cli/); you only need the service you use.
+Existing credentials and manual tokens can work even if the CLI is not found.
+A detected token is shown as unverified until a usage request succeeds.
+
+For missing or expired credentials, choose login, installation instructions, or
+check again. You can also skip, disable a provider, or paste a token. Setup offers
+to start TokenTray when you log in to your computer.
 
 ## Commands
 
@@ -87,7 +94,16 @@ locale, and offers to start tokentray at login.
 
 tokentray reads the credentials saved on your machine by Claude Code and Codex.
 **Claude token refresh is left to Claude Code** to avoid conflicting updates.
-If the token expires, tokentray prompts you to run `claude` to renew your login.
+When a login expires, click **Log in** in the detail panel or the in-app alert.
+TokenTray opens a terminal running `claude auth login` or `codex login` on Windows,
+macOS, or Linux. It watches for credential changes for up to five minutes and
+refreshes usage after a change. Cancelling the wait does not close your terminal;
+you can finish signing in and refresh later. If no terminal can be opened, copy
+the displayed command. If the CLI is not found, open the installation guide and
+check again; an installed CLI may also be missing from the app's `PATH`.
+
+`tokentray doctor` shows the same local CLI and credential detection results.
+Opening an installation guide does not install software automatically.
 
 | Service | Location |
 |---|---|

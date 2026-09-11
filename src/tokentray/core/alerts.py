@@ -47,6 +47,7 @@ class AlertEvent:
     row: WindowRow | None = None
     provider: str | None = None
     detail: str = ""
+    login_required: bool = False
 
 
 @dataclass
@@ -263,6 +264,7 @@ def _status_events(view: ProviderView, state: AlertState) -> list[AlertEvent]:
             tier="orange",
             priority="high",
             provider=view.provider,
+            login_required=status.value in ("expired", "unauthorized"),
         )
     ]
 

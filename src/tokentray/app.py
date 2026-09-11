@@ -34,6 +34,7 @@ from .core import i18n, paths, state
 from .core.alerts import AlertState, evaluate
 from .core.cache import Cache
 from .core.config import Config
+from .core.models import Status
 from .core.view import ProviderView, build_view
 
 log = logging.getLogger("tokentray")
@@ -82,6 +83,7 @@ class PollWorker(QObject):
     """Fetches every provider, one poll at a time, off the UI thread."""
 
     snapshots_ready = Signal(list)
+    refresh_finished = Signal(bool)
     requested = Signal(bool)
 
     def __init__(self, config: Config) -> None:
@@ -105,11 +107,15 @@ class PollWorker(QObject):
             while True:
                 snapshots = [p.fetch(force=force) for p in self._providers]
                 self.snapshots_ready.emit(snapshots)
+                if force:
+                    self.refresh_finished.emit(all(s.status == Status.OK for s in snapshots))
                 if self._pending is None:
                     return
                 force, self._pending = self._pending, None
         except Exception:
             log.exception("poll failed")
+            if force:
+                self.refresh_finished.emit(False)
         finally:
             self._busy = False
 
@@ -156,6 +162,12 @@ class Controller(QObject):
             anchor_widget_geometry=self.tray.geometry,
         )
         self.toasts.on_activated = self.show_panel
+        from .login_recovery import LoginRecovery
+
+        self.recovery = LoginRecovery(config, lambda: self.refresh(force=True), self)
+        self.panel.recovery = self.recovery
+        self.toasts.login_actions = lambda key: self.recovery.toast_actions(key, self.show_panel)
+        self.recovery.changed.connect(lambda: self.panel.update_views(self.views))
         self.webhook = Webhook.from_config(config)
         self.dispatcher = Dispatcher(
             self.toasts,
@@ -168,6 +180,7 @@ class Controller(QObject):
         self._worker = PollWorker(config)
         self._worker.moveToThread(self._thread)
         self._worker.snapshots_ready.connect(self._on_snapshots)
+        self._worker.refresh_finished.connect(self.panel.refresh_feedback.finish)
 
         self._timer = QTimer(self.app)
         self._timer.setInterval(config.poll_interval * 1000)
@@ -184,6 +197,7 @@ class Controller(QObject):
             return False
 
         autostart.repair()
+        self.recovery.start()
         self.tray.set_autostart_checked(autostart.is_enabled())
         self.tray.set_paused(self.alerts.is_paused(time.time()))
         self.tray.unavailable.connect(self._on_tray_unavailable)
@@ -209,6 +223,7 @@ class Controller(QObject):
         return True
 
     def _shutdown(self) -> None:
+        self.recovery.close()
         self._timer.stop()
         self.toasts.clear()
         self.webhook.close()
@@ -233,6 +248,7 @@ class Controller(QObject):
     def _on_snapshots(self, snapshots: list) -> None:
         now = datetime.now(timezone.utc)
         self.views = [build_view(snapshot, now) for snapshot in snapshots]
+        self.recovery.on_views(self.views)
         self.tray.update_views(self.views)
         self.panel.update_views(self.views)
 

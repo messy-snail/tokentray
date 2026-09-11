@@ -600,6 +600,7 @@ dependencies = [
     { name = "keyring" },
     { name = "platformdirs" },
     { name = "pyside6" },
+    { name = "rich" },
     { name = "tomli-w" },
     { name = "typer" },
 ]
@@ -618,6 +619,7 @@ requires-dist = [
     { name = "keyring", specifier = ">=25" },
     { name = "platformdirs", specifier = ">=4.3" },
     { name = "pyside6", specifier = ">=6.8" },
+    { name = "rich", specifier = ">=13" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.15" },
 ]

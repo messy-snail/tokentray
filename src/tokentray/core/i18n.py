@@ -223,6 +223,11 @@ STRINGS: dict[str, dict[str, str]] = {
     },
 }
 
+from .connection_strings import EN as CONNECTION_EN, KO as CONNECTION_KO
+
+STRINGS["en"].update(CONNECTION_EN)
+STRINGS["ko"].update(CONNECTION_KO)
+
 _PLACEHOLDER = re.compile(r"\{(\w+)")
 
 _current = DEFAULT_LANGUAGE
