@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from types import SimpleNamespace
 
 import pytest
 
@@ -20,7 +19,6 @@ from typer.testing import CliRunner  # noqa: E402
 from tokentray import diagnostics  # noqa: E402
 from tokentray.cli import app as cli_app  # noqa: E402
 from tokentray.core.config import Config  # noqa: E402
-from tokentray.notify.dispatcher import Dispatcher  # noqa: E402
 from tokentray.ui import tray as tray_mod  # noqa: E402
 
 runner = CliRunner()
@@ -92,7 +90,8 @@ class TestConfigReloadTakesEffect:
     def test_a_reload_hands_the_new_value_to_the_dispatcher(
         self, qapp, isolated_config, monkeypatch
     ):
-        from tokentray import app as app_mod, ipc
+        from tokentray import app as app_mod
+        from tokentray import ipc
         from tokentray.core import paths
 
         controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))
@@ -108,7 +107,8 @@ class TestConfigReloadTakesEffect:
     def test_a_reload_hands_over_the_toast_presentation(
         self, qapp, isolated_config, monkeypatch
     ):
-        from tokentray import app as app_mod, ipc
+        from tokentray import app as app_mod
+        from tokentray import ipc
         from tokentray.core import paths
 
         controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))

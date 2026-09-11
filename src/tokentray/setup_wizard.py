@@ -9,17 +9,15 @@ hours.
 
 from __future__ import annotations
 
+import locale
 import time
 import webbrowser
-import locale
 from dataclasses import dataclass
 
 import typer
 
 from . import autostart
-from .connections import AuthState, INSTALL_URLS, inspect, observe, make_provider, login_command
-from .login_terminal import launch, LaunchError
-from .setup_display import say, show_connections
+from .connections import INSTALL_URLS, AuthState, inspect, login_command, make_provider, observe
 from .core import i18n
 from .core.config import Config
 from .core.models import Status
@@ -30,6 +28,8 @@ from .core.secrets import (
     SecretStore,
     default_store,
 )
+from .login_terminal import LaunchError, launch
+from .setup_display import say, show_connections
 
 
 @dataclass

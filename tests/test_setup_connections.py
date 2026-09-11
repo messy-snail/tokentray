@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 from rich.console import Console
 
-from tokentray import setup_display as display, setup_wizard as wizard
+from tokentray import setup_display as display
+from tokentray import setup_wizard as wizard
 from tokentray.connections import AuthState, Connection
 from tokentray.core import i18n
 from tokentray.core.config import Config
@@ -62,10 +63,13 @@ def test_cp949_output(monkeypatch):
 
 
 def test_readonly_doctor_uses_same_detector(monkeypatch, isolated_config):
-    from tokentray import diagnostics, connections
+    from tokentray import connections, diagnostics
 
     monkeypatch.setattr(connections, "inspect", lambda key, config: Connection(key, None, "manual", AuthState.FOUND))
-    monkeypatch.setattr(diagnostics, "qt_facts", lambda: {"platform": "offscreen", "tray": False, "supports_messages": False})
+    monkeypatch.setattr(
+        diagnostics, "qt_facts",
+        lambda: {"platform": "offscreen", "tray": False, "supports_messages": False},
+    )
     result = "\n".join(diagnostics.report(Config({})))
     assert "Found; connection unverified (manual)" in result
     assert "poll interval" in result
@@ -73,6 +77,7 @@ def test_readonly_doctor_uses_same_detector(monkeypatch, isolated_config):
 
 def test_setup_login_waits_for_change_then_checks_provider(monkeypatch, tmp_path):
     from types import SimpleNamespace
+
     from tokentray.connections import Observation
     from tokentray.core.models import Status
 

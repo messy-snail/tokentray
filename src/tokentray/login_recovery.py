@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
+import time
+import webbrowser
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
-import time
 from typing import Callable
-import webbrowser
 
 from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtWidgets import QApplication
 
-from .connections import Action, AuthState, Connection, INSTALL_URLS, NAMES, Observation, observe, login_command
+from .connections import (
+    INSTALL_URLS,
+    NAMES,
+    Action,
+    AuthState,
+    Connection,
+    Observation,
+    login_command,
+    observe,
+)
 from .core.config import Config
 from .core.i18n import t
 from .core.models import Status

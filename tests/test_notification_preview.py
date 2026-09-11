@@ -149,9 +149,10 @@ def test_pending_menu_survives_language_rebuild(qapp):
 
 def test_custom_preview_has_a_meter_for_each_limit(qapp):
     from PySide6.QtWidgets import QLabel
+
+    from tokentray.ui.fonts import initialize_fonts
     from tokentray.ui.popup import ToastManager, _Meter
     from tokentray.ui.provider_icons import ProviderMark
-    from tokentray.ui.fonts import initialize_fonts
 
     initialize_fonts(qapp)
     manager = ToastManager()
@@ -178,8 +179,9 @@ def test_custom_preview_has_a_meter_for_each_limit(qapp):
 
 def test_disabled_and_failed_preview_have_no_fake_meters(qapp):
     from PySide6.QtWidgets import QLabel
-    from tokentray.ui.popup import ToastManager, _Meter
+
     from tokentray.ui.fonts import initialize_fonts
+    from tokentray.ui.popup import ToastManager, _Meter
 
     initialize_fonts(qapp)
     manager = ToastManager()

@@ -116,6 +116,7 @@ def test_recheck_fetches_and_copy_uses_command_only(rig, qtbot, qapp):
 
 def test_slow_probe_does_not_block_ui(qapp, qtbot, monkeypatch):
     from threading import Event
+
     from PySide6.QtCore import QTimer
 
     release = Event()

@@ -20,8 +20,8 @@ from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLabel, QWidget  # noqa: E402
 
 from tokentray.core import i18n  # noqa: E402
-from tokentray.core.compute import TIER_COLORS  # noqa: E402
 from tokentray.core.alerts import AlertEvent  # noqa: E402
+from tokentray.core.compute import TIER_COLORS  # noqa: E402
 from tokentray.core.config import Config  # noqa: E402
 from tokentray.core.models import Snapshot, Status, UsageWindow  # noqa: E402
 from tokentray.core.secrets import SecretStore  # noqa: E402

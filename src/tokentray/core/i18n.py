@@ -227,7 +227,10 @@ STRINGS: dict[str, dict[str, str]] = {
     },
 }
 
-from .connection_strings import EN as CONNECTION_EN, KO as CONNECTION_KO
+# Imported here, not at the top: the tables below are merged into STRINGS,
+# which only exists once the literal above has been evaluated.
+from .connection_strings import EN as CONNECTION_EN  # noqa: E402
+from .connection_strings import KO as CONNECTION_KO  # noqa: E402
 
 STRINGS["en"].update(CONNECTION_EN)
 STRINGS["ko"].update(CONNECTION_KO)

@@ -9,16 +9,16 @@ import httpx
 import pytest
 import respx
 
-from tokentray.core.config import Config
 from tokentray.core.alerts import AlertState, evaluate
+from tokentray.core.config import Config
 from tokentray.core.models import Status
 from tokentray.core.view import build_view, tooltip
 from tokentray.providers import build_providers
 from tokentray.providers.base import SchemaError
 from tokentray.providers.claude import USAGE_URL as CLAUDE_URL
 from tokentray.providers.claude import ClaudeProvider
-from tokentray.providers.codex import TOKEN_URL, USAGE_URL as CODEX_URL
-from tokentray.providers.codex import CodexProvider
+from tokentray.providers.codex import TOKEN_URL, CodexProvider
+from tokentray.providers.codex import USAGE_URL as CODEX_URL
 
 CLAUDE_BODY = {
     "five_hour": {"utilization": 48.0, "resets_at": "2026-09-07T16:00:00Z"},

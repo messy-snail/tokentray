@@ -1,10 +1,10 @@
 """Regression coverage for scrolling, disclosure, and bundled typography."""
 
 import pytest
-from shiboken6 import isValid
 from PySide6.QtCore import QPoint
 from PySide6.QtGui import QFont, QFontDatabase, QFontInfo
 from PySide6.QtWidgets import QDialogButtonBox, QLabel
+from shiboken6 import isValid
 
 from tokentray.core import i18n
 from tokentray.core.config import Config
@@ -173,6 +173,7 @@ def test_font_hinting_is_disabled_only_on_windows(qapp, monkeypatch, platform):
 
 def test_widgets_inherit_hinting(qapp, tmp_path):
     from PySide6.QtWidgets import QMenu
+
     from tokentray.ui.panel import DetailPanel
     from tokentray.ui.popup import Toast
 

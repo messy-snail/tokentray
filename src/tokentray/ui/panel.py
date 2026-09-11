@@ -27,12 +27,12 @@ from ..core.compute import TIER_EMOJI
 from ..core.i18n import t
 from ..core.view import ProviderView
 from . import theme
-from .popup import SHADOW_MARGIN, _Meter, _rgba
-from .wrapping import WrappingLabel
 from .elided import ElidedLabel
+from .loading_overlay import LoadingOverlay
+from .popup import SHADOW_MARGIN, _Meter, _rgba
 from .provider_icons import ProviderMark
 from .refresh_feedback import RefreshFeedback
-from .loading_overlay import LoadingOverlay
+from .wrapping import WrappingLabel
 
 PANEL_WIDTH = 340
 

@@ -254,16 +254,20 @@ class Controller(QObject):
         try:
             if snapshots is None:
                 title, body = i18n.t("test.title"), i18n.t("test.failed")
-                show_custom = lambda: self.toasts.show(Toast(
-                    title=title, body=body, tier="orange", duration=self.config.popup_duration,
-                ))
+
+                def show_custom() -> None:
+                    self.toasts.show(Toast(
+                        title=title, body=body, tier="orange", duration=self.config.popup_duration,
+                    ))
             else:
                 self._update_views(snapshots)
                 disabled = {key for key in ("claude", "codex")
                             if not self.config.get(f"{key}.enabled", True)}
                 preview = usage_preview(self.views, disabled=disabled)
                 title, body = preview.title, preview.body
-                show_custom = lambda: self.toasts.show_usage_preview(self.views, disabled=disabled)
+
+                def show_custom() -> None:
+                    self.toasts.show_usage_preview(self.views, disabled=disabled)
             self.dispatcher.present(title, body, show_custom)
         finally:
             self._test_pending = False

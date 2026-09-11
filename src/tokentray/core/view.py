@@ -7,8 +7,8 @@ Qt out of anything that needs testing.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import math
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from . import compute, i18n

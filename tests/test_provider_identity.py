@@ -1,7 +1,6 @@
 """Provider identity, compact source labels, and real cached timestamps."""
 
 from datetime import datetime, timezone
-from types import SimpleNamespace
 
 import pytest
 from PySide6.QtCore import QPoint
@@ -68,7 +67,12 @@ def test_provider_pixels_and_fallback(dark, dpr):
     assert pictures[None].toImage() == pictures["unknown"].toImage()
     assert pictures["claude"].toImage() != pictures["codex"].toImage()
     image = pictures["codex"].toImage()
-    colors = [image.pixelColor(x, y) for x in range(image.width()) for y in range(image.height()) if image.pixelColor(x, y).alpha() > 100]
+    colors = [
+        image.pixelColor(x, y)
+        for x in range(image.width())
+        for y in range(image.height())
+        if image.pixelColor(x, y).alpha() > 100
+    ]
     assert colors
     assert all(c.red() == (255 if dark else 0) for c in colors)
 
@@ -112,7 +116,10 @@ def test_alert_provider_propagation(monkeypatch, providers, expected):
     manager = ToastManager()
     shown = []
     monkeypatch.setattr(manager, "show", shown.append)
-    manager.show_alerts([AlertEvent("info", str(i), "tokentray", "test", provider=provider) for i, provider in enumerate(providers)])
+    manager.show_alerts([
+        AlertEvent("info", str(i), "tokentray", "test", provider=provider)
+        for i, provider in enumerate(providers)
+    ])
     assert [toast.findChild(ProviderMark).provider for toast in shown] == expected
     for toast in shown:
         toast.close()

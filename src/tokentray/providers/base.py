@@ -91,7 +91,10 @@ class BaseProvider:
 
         if not force and entry is not None and entry.body:
             if entry.is_fresh(ttl, now):
-                return self._decorate(entry.body, Status.CACHED, f"cached ({int(entry.age(now))}s ago)", fetched_at=entry.fetched_at)
+                return self._decorate(
+                    entry.body, Status.CACHED, f"cached ({int(entry.age(now))}s ago)",
+                    fetched_at=entry.fetched_at,
+                )
             if entry.in_backoff(now):
                 return self._decorate(entry.body, Status.STALE, entry.note or "stale", fetched_at=entry.fetched_at)
         elif not force and entry is not None and entry.in_backoff(now):

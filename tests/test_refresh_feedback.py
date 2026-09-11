@@ -9,8 +9,8 @@ from tokentray.core import i18n
 from tokentray.core.config import Config
 from tokentray.core.models import Snapshot, Status
 from tokentray.core.view import build_view
-from tokentray.ui.panel import DetailPanel
 from tokentray.ui import refresh_feedback
+from tokentray.ui.panel import DetailPanel
 
 
 @pytest.mark.parametrize("language", ["en", "ko"])
@@ -69,6 +69,7 @@ def test_fast_result_is_visible_then_returns_to_refresh(qapp, qtbot, monkeypatch
 
 def test_overlay_stays_inside_card_and_stops_when_closed(qapp, qtbot):
     from PySide6.QtCore import QPoint, Qt
+
     from tokentray.ui.popup import SHADOW_MARGIN
 
     requests = []

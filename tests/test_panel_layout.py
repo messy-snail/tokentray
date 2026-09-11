@@ -1,7 +1,7 @@
 """Structured panel fields and geometry across languages and screen sizes."""
 
-from datetime import datetime, timedelta, timezone
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from PySide6.QtCore import QPoint, QRect
@@ -61,7 +61,11 @@ def test_missing_and_reset_values():
     snapshot = Snapshot(provider="claude", status=Status.OK, windows=[window])
     row = build_view(snapshot, NOW).rows[0]
     assert row.details == []
-    snapshot = replace(snapshot, windows=[replace(window, resets_at=NOW - timedelta(seconds=1))], window_reset_pending=True)
+    snapshot = replace(
+        snapshot,
+        windows=[replace(window, resets_at=NOW - timedelta(seconds=1))],
+        window_reset_pending=True,
+    )
     row = build_view(snapshot, NOW).rows[0]
     assert row.details == []
     assert row.detail_status == i18n.t("status.window_reset")

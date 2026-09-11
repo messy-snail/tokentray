@@ -46,6 +46,7 @@ tokentray-gui = "tokentray.app:main"
 [dependency-groups]
 dev = [
     "pyinstaller>=6.22.2",
+    "ruff>=0.16",
     "pytest>=8.3",
     "pytest-qt>=4.4",
     "respx>=0.22",
@@ -65,3 +66,25 @@ packages = ["src/tokentray"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Deliberately narrow: correctness (F), the pycodestyle errors that matter (E,
+# W), import order (I) and the bugbear checks (B). Modernisation rules such as
+# UP are left out - they would rewrite working code without changing what it
+# does, and a mechanical diff is the last thing a first release needs.
+select = ["E", "F", "W", "I", "B"]
+# zip(strict=...) is a per-call-site judgement, not a defect.
+ignore = ["B905"]
+
+[tool.ruff.lint.per-file-ignores]
+# Translation tables: one string per line reads better than a reflowed one, and
+# key/placeholder parity is asserted by tests rather than by eye.
+"src/tokentray/core/i18n.py" = ["E501"]
+"src/tokentray/core/connection_strings.py" = ["E501"]
+# A manual harness, never collected. Its closures deliberately capture a widget
+# built later in the same iteration; untangling that is 0.1.1 work.
+"tests/manual_connection_ui.py" = ["B023"]

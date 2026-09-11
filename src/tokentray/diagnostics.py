@@ -35,7 +35,7 @@ def report(config) -> list[str]:
     from .providers.codex import auth_path
 
     lines = [f"tokentray {__version__}  (python {sys.version.split()[0]}, {sys.platform})"]
-    from .connections import inspect, NAMES
+    from .connections import NAMES, inspect
     from .core.i18n import t
 
     for key, name in NAMES.items():

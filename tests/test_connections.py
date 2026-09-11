@@ -7,9 +7,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from tokentray import connections as c, login_terminal as terminal
+from tokentray import connections as c
+from tokentray import login_terminal as terminal
 from tokentray.core.config import Config
-from tokentray.core.secrets import SecretStore, CLAUDE_ACCESS_TOKEN
+from tokentray.core.secrets import CLAUDE_ACCESS_TOKEN, SecretStore
 
 
 @pytest.fixture

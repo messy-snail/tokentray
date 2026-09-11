@@ -89,7 +89,7 @@ def main() -> int:
     # QPixmap needs a QGuiApplication even under the offscreen plugin.
     from PySide6.QtGui import QGuiApplication
 
-    app = QGuiApplication.instance() or QGuiApplication([])
+    _app = QGuiApplication.instance() or QGuiApplication([])  # must outlive the renders
 
     wanted = sorted(set(ICO_SIZES) | set(PNG_SIZES) | set(ICNS_TYPES.values()))
     pngs = {size: render(size) for size in wanted}

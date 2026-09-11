@@ -118,9 +118,9 @@ def test_welcome_keeps_actions(routing, qapp, monkeypatch, platform):
 
 
 def test_config_reload_changes_delivery(routing, qapp, isolated_config):
+    from tokentray import ipc
     from tokentray.app import Controller
     from tokentray.core import paths
-    from tokentray import ipc
 
     dispatcher, cards, webhook, native = routing
     controller = SimpleNamespace(dispatcher=dispatcher, toasts=cards, webhook=webhook,

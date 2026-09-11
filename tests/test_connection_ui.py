@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from PySide6.QtCore import QPoint, QRect, QRectF, Qt
 from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QPushButton
 
-from tokentray.connections import AuthState, Connection
 from tokentray.core import i18n
 from tokentray.core.alerts import AlertEvent, AlertState, _status_events
 from tokentray.core.models import Snapshot, Status
 from tokentray.core.view import build_view
 from tokentray.ui.panel import DetailPanel
-from tokentray.ui.popup import Toast, ToastManager, MAX_VISIBLE, SHADOW_MARGIN, GAP
+from tokentray.ui.popup import GAP, MAX_VISIBLE, SHADOW_MARGIN, Toast, ToastManager
 
 
 @pytest.mark.parametrize("language", ["en", "ko"])

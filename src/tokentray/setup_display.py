@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .connections import Connection, NAMES
+from .connections import NAMES, Connection
 from .core.i18n import t
 
 

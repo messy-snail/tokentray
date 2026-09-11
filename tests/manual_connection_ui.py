@@ -22,7 +22,7 @@ from tokentray.core.models import Snapshot, Status, UsageWindow
 from tokentray.core.view import build_view
 from tokentray.ui.fonts import initialize_fonts
 from tokentray.ui.panel import DetailPanel
-from tokentray.ui.popup import Toast, SHADOW_MARGIN
+from tokentray.ui.popup import SHADOW_MARGIN, Toast
 
 
 def main() -> None:
