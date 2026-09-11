@@ -16,3 +16,7 @@ wheels/
 
 # Claude Code scratch. A git worktree must never be committed into its own repo.
 .claude/worktrees/
+
+# scripts/verify-linux.sh writes its log into the repo root; the tree has to be
+# clean at tag time.
+verify-linux-*.log

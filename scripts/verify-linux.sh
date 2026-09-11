@@ -115,18 +115,25 @@ else
 fi
 
 section "XWayland selection (checklist items 28-29)"
-uv run python - <<'PY'
-import os, sys
-sys.path.insert(0, "src")
+# Wrapped in an if: the heredoc's exit status is otherwise discarded, and the
+# script runs without -e, so a broken import here used to print a traceback and
+# still let the run finish green.
+if uv run python - <<'PY'
+import os
 os.environ.pop("QT_QPA_PLATFORM", None)
-from tokentray.app import _select_platform_plugin
+from tokentray.bootstrap import select_platform_plugin
 from tokentray.core.config import Config
-_select_platform_plugin(Config({}))
+select_platform_plugin(Config({}))
 chosen = os.environ.get("QT_QPA_PLATFORM", "<unset: Qt picks its own>")
 print(f"  ...   with this session, tokentray would use: {chosen}")
 if os.environ.get("WAYLAND_DISPLAY") and chosen != "xcb":
     print("  ...   Wayland session but not redirected - toasts may be misplaced (item 29 territory)")
 PY
+then
+    ok "plugin selection evaluated"
+else
+    bad "XWayland check did not run - items 28-29 are unverified"
+fi
 
 if [ "$LAUNCH_GUI" = 1 ]; then
     section "GUI"
