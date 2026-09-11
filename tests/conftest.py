@@ -27,6 +27,20 @@ def isolate_environment(tmp_path, monkeypatch):
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+    # platformdirs reads these ahead of $HOME on Linux, so patching HOME alone
+    # does not cover them. XDG_RUNTIME_DIR is the one that bites: a desktop
+    # session always sets it, and paths.lock_file() is a fixed name inside it -
+    # unlike the socket, which conftest already makes unique per run. Without
+    # this, running the suite on the box being certified touches the lock a
+    # running tokentray holds.
+    for var in (
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "XDG_STATE_HOME",
+        "XDG_DATA_HOME",
+        "XDG_RUNTIME_DIR",
+    ):
+        monkeypatch.setenv(var, str(tmp_path / var.lower()))
     # Windows IPC uses a per-user named pipe, so an installed/running tokentray
     # would otherwise answer tests that expect an isolated process.
     from tokentray import ipc
