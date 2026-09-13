@@ -114,6 +114,10 @@ class Controller(QObject):
         self.config = config
         self.autostart_launch = autostart_launch
         self.views: list[ProviderView] = []
+        self._integration_dialog: Any = None
+        # build_view() bakes translated strings into the views, so a language
+        # change has to rebuild them from the snapshots rather than re-render.
+        self._snapshots: list[Snapshot] = []
         self._test_pending = False
         # The running instance's answer when this launch lost the single-instance
         # race; None until then, and None again if that instance never replied.
@@ -228,6 +232,7 @@ class Controller(QObject):
 
     def _update_views(self, snapshots: list[Snapshot]) -> None:
         now = datetime.now(timezone.utc)
+        self._snapshots = snapshots
         self.views = [build_view(snapshot, now) for snapshot in snapshots]
         self.recovery.on_views(self.views)
         self.tray.update_views(self.views)
@@ -302,16 +307,23 @@ class Controller(QObject):
     def show_integration_settings(self) -> None:
         from .ui.integration import IntegrationDialog
 
-        existing = getattr(self, "_integration_dialog", None)
-        if existing is not None and existing.isVisible():
+        existing = self._integration_dialog
+        if existing is not None:
             existing.raise_()
             existing.activateWindow()
             return
         dialog = IntegrationDialog(self.config, on_saved=self._apply_webhook_settings)
+        # The dialog deletes itself on close, and every call on the wrapper left
+        # behind raises. Holding that wrapper meant the menu item silently did
+        # nothing for the rest of the run, so let go the moment it is gone.
+        dialog.destroyed.connect(self._forget_integration_dialog)
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
         self._integration_dialog = dialog
+
+    def _forget_integration_dialog(self, *_: object) -> None:
+        self._integration_dialog = None
 
     def _apply_webhook_settings(self, settings) -> None:
         self.webhook.reconfigure(
@@ -337,9 +349,13 @@ class Controller(QObject):
         self.tray.retranslate()
         self.tray.set_paused(self.alerts.is_paused(time.time()))
         self.tray.set_autostart_checked(autostart.is_enabled())
-        # Labels live in the views, so re-render them from the current data.
-        self.tray.update_views(self.views)
-        self.panel.update_views(self.views)
+        # The views carry already-translated text, so re-rendering them would
+        # leave the old language everywhere the new one is not re-derived.
+        if self._snapshots:
+            self._update_views(self._snapshots)
+        else:
+            self.tray.update_views(self.views)
+            self.panel.update_views(self.views)
 
     def _set_autostart(self, enabled: bool) -> None:
         ok = autostart.enable() if enabled else autostart.disable()
