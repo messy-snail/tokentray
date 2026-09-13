@@ -7,18 +7,19 @@
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Qt](https://img.shields.io/badge/Qt-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6B7280?style=flat-square)
-[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
-
-<!-- Restore these two inside the badge row at the 0.1.0 tag. Until a
-     package and a release exist they render as "not found" and
-     "no releases", which reads as a broken project.
 [![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
 [![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
--->
+[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)](LICENSE)
 
 **Claude Code**와 **OpenAI Codex**의 남은 사용량을 시스템 트레이에서 확인하고,
 한도를 모두 사용하기 전에 데스크톱 알림을 받을 수 있습니다.
 Windows, macOS, Linux를 지원합니다.
+
+<!-- 데모 녹화: docs/images/demo.gif를 추가한 뒤 주석을 해제하세요.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/demo.gif" alt="tokentray 트레이 아이콘을 눌러 사용량 패널을 여는 모습" width="720">
+</p>
+-->
 
 > **출처.** tokentray는
 > [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
@@ -38,27 +39,56 @@ Windows, macOS, Linux를 지원합니다.
   속도 1.0x는 지금까지의 평균 사용 속도가 유지될 경우 리셋 시점에 한도가 소진될 것으로
   예상된다는 뜻입니다.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-ko-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-ko-light.png" alt="Claude Code와 Codex의 한도별 남은 비율, 리셋 시간, 소진 예상, 속도를 보여주는 상세 패널" width="360">
+  </picture>
+</p>
+
 트레이 아이콘은 12시 방향부터 시계방향으로 줄어드는 링입니다. 두 서비스를 모두 켜면
 바깥쪽은 Claude, 안쪽은 Codex를 나타냅니다. 색상은 남은 비율의 소수점을 버린 값을
 기준으로 50% 초과는 초록, 21~50%는 주황, 20% 이하는 빨강입니다.
 사용량 데이터가 없는 서비스는 회색 링으로 표시합니다.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-ko-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-ko-light.png" alt="트레이 아이콘 상태: 초록, 주황, 빨강 링과 데이터가 없는 서비스의 회색 바깥 링" width="376">
+  </picture>
+</p>
+
 ## 설치
 
-> **0.1.0은 아직 릴리스 전입니다.** Linux 데스크톱 검증이 남아 있습니다.
-> PyPI 패키지와 배포용 실행 파일은 아직 제공하지 않으므로 아래 명령으로 소스에서 설치하세요.
+### 실행 파일 내려받기
+
+[Releases](https://github.com/messy-snail/tokentray/releases/latest)의 배포 파일은 Python을
+포함하므로 따로 설치할 것이 없습니다.
+
+| 플랫폼 | 파일 | 다음 단계 |
+|---|---|---|
+| Windows x86_64 | `tokentray-windows-x86_64.zip` | 압축을 풀고 `tokentray\tokentray-gui.exe` 실행 |
+| macOS Apple silicon | `tokentray-macos-arm64.zip` | `tokentray.app`을 응용 프로그램 폴더로 옮기고 격리 속성 제거 |
+| Linux x86_64 | `tokentray-linux-x86_64.tar.gz` | 압축을 풀고 `./install.sh`로 런처 등록 |
+
+배포 파일은 코드 서명되지 않았습니다. Windows SmartScreen 경고, macOS 격리 속성 제거 명령,
+Linux 시스템 패키지는 [플랫폼별 참고](#플랫폼별-참고)를 확인하세요.
+
+### uv로 설치
+
+Python 3.11~3.13과 [uv](https://docs.astral.sh/uv/)가 필요합니다.
 
 ```bash
-git clone https://github.com/messy-snail/tokentray
-cd tokentray
-uv tool install .
+uv tool install tokentray
 ```
 
-0.1.0에서는 `uv tool install tokentray` 명령과
-[Releases](https://github.com/messy-snail/tokentray/releases)의 운영체제별 실행 파일을
-제공할 예정입니다. 배포용 실행 파일은 Python을 별도로 설치하지 않아도 됩니다.
+아직 릴리스되지 않은 최신 코드를 쓰려면
+`uv tool install git+https://github.com/messy-snail/tokentray`를 대신 실행하세요.
 
-그다음:
+### 셋업
+
+셋업을 한 번 실행합니다. 내려받은 배포 파일은 GUI 실행 파일과 같은 위치에 `tokentray` CLI가
+들어 있습니다(macOS는 `tokentray.app/Contents/MacOS` 안).
 
 ```bash
 tokentray setup
@@ -98,6 +128,13 @@ tokentray는 Claude Code와 Codex가 이 컴퓨터에 저장한 로그인 정보
 대기를 취소해도 사용자 터미널은 닫지 않으며, 나중에 로그인한 뒤 새로고침할 수 있습니다.
 터미널 실행에 실패하면 명령 복사를, CLI를 찾지 못하면 설치 안내와 다시 확인을 제공합니다.
 이미 설치했다면 앱의 `PATH`에 CLI가 포함되어 있는지도 확인하세요.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-ko-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-ko-light.png" alt="Claude Code 로그인 만료 안내와 로그인 바로가기, 다시 확인 버튼이 있는 상세 패널" width="360">
+  </picture>
+</p>
 
 `tokentray doctor`에서도 같은 CLI·인증 감지 결과를 확인할 수 있습니다.
 설치 안내는 공식 문서를 열며 프로그램을 자동 설치하지 않습니다.
@@ -140,6 +177,13 @@ Codex 토큰 갱신은 **직접 켜야 하는 기능**입니다
 | `codex.refresh` | `false` | tokentray가 Codex 토큰을 갱신하도록 허용 |
 | `linux.force_xwayland` | `true` | 아래 참고 |
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-ko-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-ko-light.png" alt="Discord 웹훅을 선택한 알림 연동 설정 창" width="420">
+  </picture>
+</p>
+
 트레이 메뉴의 **알림 연동 설정…**에서 알림을 받을 서비스 한 곳을 선택하고 URL 확인과
 테스트 전송을 할 수 있습니다. Slack과 Discord는 Incoming Webhook을 사용합니다.
 URL은 OS 키링에 저장하며, 키링을 사용할 수 없으면 별도의 로컬 시크릿 파일에 저장합니다
@@ -165,6 +209,13 @@ Slack 발신자 이름과 아이콘은 웹훅을 만든 Slack 앱 설정을 따�
 같은 파일을 아바타로 지정할 수 있습니다.
 
 ## 알림 방식
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-ko-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-ko-light.png" alt="Claude Code 7일 Opus 한도가 14% 남았다는 알림 카드와 리셋 시간, 속도" width="452">
+  </picture>
+</p>
 
 Windows에서는 서비스 아이콘과 진행률 막대가 있는 자체 카드를 기본으로 사용합니다.
 **알림 테스트**는 백그라운드에서 새로 조회한 Claude Code·Codex의 한도별 잔량을

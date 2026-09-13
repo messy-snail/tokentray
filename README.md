@@ -7,18 +7,19 @@
 [![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![Qt](https://img.shields.io/badge/Qt-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6B7280?style=flat-square)
-[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)][LICENSE]
-
-<!-- Restore these two inside the badge row at the 0.1.0 tag. Until a
-     package and a release exist they render as "not found" and
-     "no releases", which reads as a broken project.
 [![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
 [![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
--->
+[![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)][LICENSE]
 
 A system-tray monitor for **Claude Code** and **OpenAI Codex** usage limits.
 Check your remaining quota and get desktop alerts before it runs out.
 Available for Windows, macOS and Linux.
+
+<!-- Demo recording: add docs/images/demo.gif, then uncomment.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/demo.gif" alt="Clicking the tokentray tray icon opens the usage panel" width="720">
+</p>
+-->
 
 > **Attribution.** tokentray is a from-scratch reimplementation derived from
 > [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
@@ -38,29 +39,57 @@ Available for Windows, macOS and Linux.
   estimated time to exhaustion. A pace of 1.0x means the quota is projected to
   run out at reset if your average usage rate stays the same.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-en-light.png" alt="Detail panel with Claude Code and Codex limits: remaining percentage, reset time, burn-out estimate and pace" width="360">
+  </picture>
+</p>
+
 The tray icon uses rings that drain clockwise from the top. With both services
 enabled, Claude is outside and Codex is inside. Colour follows the remaining
 percentage rounded down to a whole number: green above 50%, amber from 21% to
 50%, and red at 20% or below. A service with no usage data has a grey ring.
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-en-light.png" alt="Tray icon states: green, amber and red rings, and a grey outer ring for a service without data" width="376">
+  </picture>
+</p>
+
 ## Install
 
-> **0.1.0 is not released yet.** Linux desktop validation is still pending.
-> There is no PyPI package or packaged download yet; use the source installation
-> below.
+### Download
+
+Builds on [Releases](https://github.com/messy-snail/tokentray/releases/latest)
+bundle their own Python, so there is nothing else to install.
+
+| Platform | File | Then |
+|---|---|---|
+| Windows x86_64 | `tokentray-windows-x86_64.zip` | Unzip and run `tokentray\tokentray-gui.exe` |
+| macOS Apple silicon | `tokentray-macos-arm64.zip` | Move `tokentray.app` to Applications and clear the quarantine flag |
+| Linux x86_64 | `tokentray-linux-x86_64.tar.gz` | Unpack and run `./install.sh` for a launcher entry |
+
+The builds are not code-signed. See
+[Platform notes](https://github.com/messy-snail/tokentray#platform-notes) for the
+Windows SmartScreen prompt, the macOS quarantine command and Linux system packages.
+
+### With uv
+
+With Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/):
 
 ```bash
-git clone https://github.com/messy-snail/tokentray
-cd tokentray
-uv tool install .
+uv tool install tokentray
 ```
 
-For 0.1.0, the planned installation options are `uv tool install tokentray`
-and platform-specific downloads from
-[Releases](https://github.com/messy-snail/tokentray/releases).
-Packaged downloads will not require a separate Python installation.
+For the latest unreleased code, use
+`uv tool install git+https://github.com/messy-snail/tokentray` instead.
 
-Then:
+### Set up
+
+Run setup once. A download ships the `tokentray` CLI next to the GUI executable
+(inside `tokentray.app/Contents/MacOS` on macOS).
 
 ```bash
 tokentray setup
@@ -101,6 +130,13 @@ refreshes usage after a change. Cancelling the wait does not close your terminal
 you can finish signing in and refresh later. If no terminal can be opened, copy
 the displayed command. If the CLI is not found, open the installation guide and
 check again; an installed CLI may also be missing from the app's `PATH`.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-light.png" alt="Detail panel with an expired Claude Code login and Log in and Check again buttons" width="360">
+  </picture>
+</p>
 
 `tokentray doctor` shows the same local CLI and credential detection results.
 Opening an installation guide does not install software automatically.
@@ -145,6 +181,13 @@ position and duration, and `native_notifications` all apply straight away;
 | `codex.refresh` | `false` | Let tokentray refresh the Codex token |
 | `linux.force_xwayland` | `true` | See below |
 
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-light.png" alt="Notification integrations window with a Discord webhook selected" width="420">
+  </picture>
+</p>
+
 Choose **Notification integrations…** from the tray menu to configure one
 outbound destination, validate its URL and send a test. Slack and Discord use
 their Incoming Webhook feature. The URL is stored in the OS keyring, or a separate
@@ -173,6 +216,13 @@ so set the included `packaging/resources/tokentray-512.png` as that app's icon.
 Discord likewise lets you set the webhook avatar in the channel settings.
 
 ## Notifications
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-en-light.png" alt="Alert card: Claude Code 7 days Opus at 14% remaining, with reset time and pace" width="452">
+  </picture>
+</p>
 
 Windows uses custom quota cards by default, with provider icons and progress bars.
 **Test notification** fetches fresh usage in the background and shows one card per
