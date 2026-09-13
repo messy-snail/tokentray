@@ -245,9 +245,13 @@ class TestDoctorFindsTheApp:
 
     @pytest.mark.parametrize("platform, shown", [("win32", True), ("linux", False), ("darwin", False)])
     def test_the_hidden_icon_hint_is_for_windows(self, isolated_config, monkeypatch, platform, shown):
+        from tokentray import connections
         from tokentray.core import i18n
 
         monkeypatch.setattr(sys, "platform", platform)
         monkeypatch.setattr(diagnostics, "macos_bundle", lambda: None)
+        # shutil.which reads sys.platform too, and its win32 branch calls into
+        # _winapi, which is None everywhere else. Stub the lookup, not the OS.
+        monkeypatch.setattr(connections.shutil, "which", lambda *a, **k: None)
         out = runner.invoke(cli_app, ["doctor"]).stdout
         assert (i18n.t("launch.tray_hidden_windows") in out) is shown
