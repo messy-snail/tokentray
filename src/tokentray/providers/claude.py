@@ -32,6 +32,10 @@ KEYCHAIN_ITEM_NOT_FOUND = 44  # errSecItemNotFound, as `security` exits for a mi
 # two-second login probe would otherwise keep calling it. Only a read the user
 # asked for tries again; a successful read clears this.
 _keychain_refused = threading.Event()
+# Held across that check and the read. The first poll and the login probe start
+# together at launch, and both used to pass the check before either recorded a
+# refusal - two prompts for one launch.
+_keychain_lock = threading.Lock()
 
 
 @dataclass
@@ -55,15 +59,16 @@ class ClaudeProvider(BaseProvider):
         creds = _from_file(credentials_path())
         refused = False
         if creds is None and sys.platform == "darwin":
-            if interactive or not _keychain_refused.is_set():
-                try:
-                    creds = _from_keychain()
-                    _keychain_refused.clear()
-                except CredentialsUnreadable:
-                    _keychain_refused.set()
+            with _keychain_lock:
+                if interactive or not _keychain_refused.is_set():
+                    try:
+                        creds = _from_keychain()
+                        _keychain_refused.clear()
+                    except CredentialsUnreadable:
+                        _keychain_refused.set()
+                        refused = True
+                else:
                     refused = True
-            else:
-                refused = True
         if creds is None:
             token = self._secrets.get(CLAUDE_ACCESS_TOKEN)
             if token:

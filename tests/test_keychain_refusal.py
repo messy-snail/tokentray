@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import subprocess
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -101,6 +103,40 @@ class TestTheRefusalIsRemembered:
         assert snapshot.status not in AUTH_REQUIRED
         assert snapshot.status.is_actionable
         assert status_message(snapshot) == i18n.t("status.unreadable_claude")
+
+
+class TestReadsThatStartTogether:
+    def test_they_ask_once(self, keychain, config, cache, store, monkeypatch):
+        """At launch the first poll and the login probe read at the same moment.
+
+        Both used to pass the refusal check before either recorded a refusal,
+        so a user who denies access saw the prompt twice.
+        """
+        answer = claude.subprocess.run
+
+        def prompt_is_up(argv, **kwargs):
+            time.sleep(0.2)  # `security` blocks while its prompt waits for the user
+            return answer(argv, **kwargs)
+
+        monkeypatch.setattr(claude.subprocess, "run", prompt_is_up)
+        gate = threading.Barrier(2)
+
+        def read() -> None:
+            provider = ClaudeProvider(config, cache, secrets=store)
+            gate.wait()
+            try:
+                provider.credentials()
+            except CredentialsUnreadable:
+                pass
+            finally:
+                provider.close()
+
+        threads = [threading.Thread(target=read) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert keychain.calls == 1
 
 
 class TestTheConnectionProbe:
