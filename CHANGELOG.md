@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 - unreleased
+## 0.1.0 - 2026-09-14
 
 First release. A cross-platform reimplementation of
 [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
