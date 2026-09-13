@@ -489,6 +489,28 @@ class TestIpcRoundTrip:
         finally:
             instance.release()
 
+    def test_a_client_slow_to_read_still_gets_the_reply(self, qapp, short_runtime, monkeypatch):
+        """The server must not hang up before the client has read.
+
+        On Windows closing the server end of a named pipe discards unread bytes,
+        so a busy machine turned "status" into "not running" now and then.
+        """
+        read_reply = ipc._read_reply
+
+        def slow_read(handle, timeout):
+            time.sleep(0.2)
+            return read_reply(handle, timeout)
+
+        instance = ipc.SingleInstance(lambda command: {"ok": True, "echo": command})
+        assert instance.acquire() is True
+        monkeypatch.setattr(ipc, "_read_reply", slow_read)
+        try:
+            for _ in range(3):
+                reply = self._send(qapp, ipc.CMD_STATUS)
+                assert reply == {"ok": True, "echo": ipc.CMD_STATUS}
+        finally:
+            instance.release()
+
     def test_a_second_instance_stands_down(self, qapp, short_runtime):
         import threading
 

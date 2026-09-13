@@ -213,6 +213,11 @@ class SingleInstance:
             connection.write((json.dumps(response) + "\n").encode("utf-8"))
             connection.flush()
             connection.waitForBytesWritten(READ_TIMEOUT_MS)
+            # Let the client hang up first. On Windows the server side closes a
+            # named pipe with DisconnectNamedPipe, which discards whatever the
+            # client has not read yet - so a client that is a moment slow to
+            # read got nothing, and "status" read as "not running".
+            connection.waitForDisconnected(READ_TIMEOUT_MS)
         except Exception:
             log.exception("IPC connection failed")
         finally:

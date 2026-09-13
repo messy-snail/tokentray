@@ -16,7 +16,7 @@ def test_already_buffered_command_is_answered():
     connection = SimpleNamespace(
         bytesAvailable=lambda: len(payload), waitForReadyRead=unexpected_wait,
         readAll=lambda: payload, write=replies.append, flush=lambda: None,
-        waitForBytesWritten=lambda timeout: True,
+        waitForBytesWritten=lambda timeout: True, waitForDisconnected=lambda timeout: True,
         disconnectFromServer=lambda: None, deleteLater=lambda: None,
     )
     instance = object.__new__(ipc.SingleInstance)

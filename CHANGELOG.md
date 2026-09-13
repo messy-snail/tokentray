@@ -58,6 +58,10 @@ run the same code.
 - Hovering a card no longer let it expire under the cursor. Qt reports Leave when
   the pointer crosses onto a child widget, so settling on the card body counted
   as leaving and restarted the eight seconds.
+- On Windows, `status`, `config set` and a second launch could now and then fail
+  to hear back from the running app. The app hung up right after answering, and
+  closing the server end of a named pipe throws away bytes the client has not
+  read yet; it now waits for the client to hang up first.
 - Closing "Notification integrations…" left its menu item dead until restart.
   The dialog deletes itself on close; the controller kept the stale wrapper, so
   the next open raised inside the slot and silently did nothing.
