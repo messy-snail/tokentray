@@ -28,7 +28,7 @@ Korean text fits its box.
 | 3b | A provider at 0% keeps a short coloured tick at the top, so it reads differently from one with no data at all. | ☐ | ☐ | ☐ |
 | 4 | Hovering shows a tooltip with each window's remaining percentage. The tooltip starts with `tokentray`, which is also the entry's name under Settings > Personalization > Taskbar > Other system tray icons on Windows. | ☐ | ☐ | ☐ |
 | 5 | Right-click (Windows/Linux) or click (macOS) opens the menu; every entry is present and in the selected language. | ☐ | ☐ | ☐ |
-| 6 | Left-click opens the detail panel (Windows/Linux). | ☐ | ☐ | n/a |
+| 6 | Left-click opens the detail panel (Windows/Linux). | ☐ | n/a | ☐ |
 | 7 | Clicking outside the panel dismisses it. | ☐ | ☐ | ☐ |
 
 ## Notifications
@@ -36,7 +36,7 @@ Korean text fits its box.
 | # | Check | W | M | L |
 |---|---|---|---|---|
 | 8 | "Test notification" disables the menu while fetching fresh usage, then shows Claude Code and Codex cards with a labelled meter per limit matching the updated panel. Repeated requests produce one preview; failures have no meters and cached values are marked as previous data. Automatic alert history and webhooks are unaffected. | ☐ | ☐ | ☐ |
-| 8a | Windows defaults to custom cards with no OS banner. Explicitly enabling native notifications instead sends one text summary banner. Linux/macOS retain custom plus optional native delivery; for unsigned macOS builds verify native attempt logs if no OS banner appears. | ☐ | ☐ | ☐ |
+| 8a | Windows defaults to custom cards with no OS banner. Explicitly enabling native notifications instead sends one text summary banner. Linux/macOS keep the custom card plus the optional system notification. On macOS an ad-hoc signed `.app` does deliver the banner; running outside a bundle does not, so check **Open log** for the attempt. | ☐ | ☐ | ☐ |
 | 9 | The toast does **not** steal focus - keep typing in an editor while it appears and confirm no keystrokes are lost. | ☐ | ☐ | ☐ |
 | 10 | It fades out on its own after ~8 s, and hovering it stops that countdown. | ☐ | ☐ | ☐ |
 | 11 | Clicking the toast opens the detail panel. | ☐ | ☐ | ☐ |
@@ -94,8 +94,19 @@ successful test message does not by itself verify threshold or reset reminders.
 |---|---|---|---|---|
 | 24 | Disconnect the network: the panel keeps the last numbers and marks them stale rather than blanking. | ☐ | ☐ | ☐ |
 | 25 | Log out of one CLI: that provider reports "login expired" with the command to fix it, once, not on every poll. | ☐ | ☐ | ☐ |
-| 26 | Remove `~/.codex/auth.json`: Codex reports not-configured and Claude keeps working. | ☐ | ☐ | ☐ |
+| 26 | Remove `~/.codex/auth.json`: Codex reports not logged in and Claude keeps working. | ☐ | ☐ | ☐ |
 | 27 | `tokentray doctor` reports credentials, keyring backend, tray availability and the `native alerts` / `app bundle` lines correctly. It also prints `running yes (pid N)` while the app is up and, on Windows, the hidden-icons hint. | ☐ | ☐ | ☐ |
+
+## Connections and login recovery
+
+| # | Check | W | M | L |
+|---|---|---|---|---|
+| 27a | A provider whose credentials expired shows a **Log in** button in the detail panel and on the card; pressing it runs `claude auth login` or `codex login` in a new terminal window. On macOS the first attempt raises the Automation prompt for controlling Terminal, once. | ☐ | ☐ | ☐ |
+| 27b | Finishing the login in that terminal is picked up within five minutes: the provider says the credentials changed and usage is fetched again. After five minutes it says it stopped waiting. | ☐ | ☐ | ☐ |
+| 27c | While waiting, **Check again** and **Stop waiting** are offered, and stopping does not close the terminal the user opened. Signing in later and refreshing still works. | ☐ | ☐ | ☐ |
+| 27d | When the terminal cannot be opened - including denying the macOS Automation prompt - **Copy command** and **Log in** are offered and the copied command lands on the clipboard. When the CLI is not found, **Installation guide** and **Check again** are offered, and the guide only opens the official docs; it installs nothing. | ☐ | ☐ | ☐ |
+| 27e | `tokentray setup` asks for the language first, then reports CLI discovery and credential state separately per provider. A token that was found but not verified reads "Found; connection unverified". Log in, installation guide, recheck, skip, pasted token and disable all work, and start-at-login is the last question. | ☐ | ☐ | ☐ |
+| 27f | Refreshing from the detail panel disables the button and shows the loading state, then a success or failure result. Pressing it repeatedly does not stack up fetches. | ☐ | ☐ | ☐ |
 
 ## Linux specifics
 
@@ -112,9 +123,9 @@ successful test message does not by itself verify threshold or reset reminders.
 |---|---|---|
 | 32 | Claude Code stores its credentials in the login keychain rather than a file. Confirm the first read either succeeds silently or raises a keychain authorization prompt - and that clicking **Deny** degrades the provider to an error line instead of crashing the app. | ☐ |
 | 33 | After denying, confirm the prompt does **not** return on every poll (default 120 s). A modal every two minutes from an app with no Dock icon is unusable. | ☐ |
-| 34 | The `.app` shows the double-ring icon in Finder and in the Gatekeeper dialog - not a generic placeholder. | ☐ |
-| 35 | Downloaded from a release (not built locally), the bundle is quarantined; confirm `xattr -dr com.apple.quarantine` is what unblocks it, since a locally built `.app` carries no quarantine flag and cannot test this. | ☐ |
-| 36 | Ad-hoc signatures change on every rebuild, which invalidates the keychain ACL. After installing an update, confirm the keychain prompt returning once is the worst that happens. | ☐ |
+| 34 | The `.app` shows the double-ring icon in Finder - not a generic placeholder. The Gatekeeper block dialog uses a system warning icon rather than the app's, so do not look for it there. | ☐ |
+| 35 | Downloaded from a release, the bundle is quarantined and launching it raises the block dialog; confirm `xattr -d com.apple.quarantine` is what unblocks it. Setting the attribute by hand on a copy of a local build reproduces both halves, but the real download path still needs a release. | ☐ |
+| 36 | Claude credentials are read through the `security` command, so the keychain ACL is evaluated for that tool rather than for the bundle. Confirm a freshly rebuilt bundle does not raise the authorization prompt again. | ☐ |
 | 37 | With a menu bar manager running (Bartender, Ice, Hidden Bar), confirm the welcome toast carries the line about unhiding tokentray - and that the icon is findable once unhidden. Managers hide new items by default, which is how a working app reads as a broken one. | ☐ |
 | 37a | `tokentray doctor` run from inside the `.app` and from a checkout report different `app bundle` lines (a path plus `ad-hoc`, versus `none`), and both print the Notification Centre consequence. | ☐ |
 

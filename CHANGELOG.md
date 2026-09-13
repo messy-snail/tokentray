@@ -43,6 +43,28 @@ run the same code.
 - On Windows the tray icon follows the taskbar's colour mode instead of the apps'
   mode, so light apps on a dark taskbar no longer paint a ring that all but vanishes.
 
+### Fixed
+- The self-drawn card stayed hidden on macOS whenever another app was frontmost.
+  A Qt::Tool window is an NSPanel that the OS hides on deactivation - exactly
+  when an alert is worth seeing, and outside an app bundle macOS delivers no
+  banner, so the card may be the only channel.
+- Switching language left the detail panel half-translated until the next poll.
+  The views carry already-translated text, so the switch now rebuilds them from
+  the last snapshots instead of re-rendering what was already worded.
+- Stacked cards overlapped by the height of a menu bar. The top slot asked for a
+  position above the work area - the transparent shadow margin is wider than the
+  edge inset - and macOS answered by sliding that window back down, while the
+  cards below were still spaced from the position nothing ever had.
+- Hovering a card no longer let it expire under the cursor. Qt reports Leave when
+  the pointer crosses onto a child widget, so settling on the card body counted
+  as leaving and restarted the eight seconds.
+- Closing "Notification integrations…" left its menu item dead until restart.
+  The dialog deletes itself on close; the controller kept the stale wrapper, so
+  the next open raised inside the slot and silently did nothing.
+- Closing the notification integration window disabled the menu item for the rest
+  of the run. The dialog deletes itself on close and the controller kept the
+  wrapper, so the next open raised inside the slot and did nothing visible.
+
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;
   upstream alerted only on Claude's two windows.
