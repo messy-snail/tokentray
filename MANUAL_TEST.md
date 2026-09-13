@@ -121,8 +121,8 @@ successful test message does not by itself verify threshold or reset reminders.
 
 | # | Check | |
 |---|---|---|
-| 32 | Claude Code stores its credentials in the login keychain rather than a file. Confirm the first read either succeeds silently or raises a keychain authorization prompt - and that clicking **Deny** degrades the provider to an error line instead of crashing the app. | ☐ |
-| 33 | After denying, confirm the prompt does **not** return on every poll (default 120 s). A modal every two minutes from an app with no Dock icon is unusable. | ☐ |
+| 32 | Claude Code keeps its login in the login keychain rather than a file. The first read either succeeds or raises the keychain authorization prompt. Choosing **Deny** must not quit the app; the provider must say the keychain could not be read - not that you are logged out - and offer **Check again**. | ☐ |
+| 33 | After a denial, neither the poll (120 s by default) nor the two-second login probe brings the prompt back. Only **Refresh now** or **Check again** asks again. | ☐ |
 | 34 | The `.app` shows the double-ring icon in Finder - not a generic placeholder. The Gatekeeper block dialog uses a system warning icon rather than the app's, so do not look for it there. | ☐ |
 | 35 | Downloaded from a release, the bundle is quarantined and launching it raises the block dialog; confirm `xattr -d com.apple.quarantine` is what unblocks it. Setting the attribute by hand on a copy of a local build reproduces both halves, but the real download path still needs a release. | ☐ |
 | 36 | Claude credentials are read through the `security` command, so the keychain ACL is evaluated for that tool rather than for the bundle. Confirm a freshly rebuilt bundle does not raise the authorization prompt again. | ☐ |

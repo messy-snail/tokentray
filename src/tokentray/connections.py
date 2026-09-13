@@ -117,8 +117,11 @@ def _file_state(path: Path, provider: str) -> AuthState:
     return AuthState.MISSING
 
 
-def observe(provider: str, config: Config, store: SecretStore | None = None) -> Observation:
+def observe(
+    provider: str, config: Config, store: SecretStore | None = None, *, interactive: bool = False,
+) -> Observation:
     """Read credentials using the provider's own precedence, without network I/O."""
+    from .providers.base import CredentialsUnreadable
     from .providers.claude import credentials_path
     from .providers.codex import auth_path
 
@@ -126,7 +129,7 @@ def observe(provider: str, config: Config, store: SecretStore | None = None) -> 
     path = credentials_path() if provider == "claude" else auth_path()
     reader = make_provider(provider, config, store)
     try:
-        creds = reader.credentials()
+        creds = reader.credentials(interactive=interactive)
         if creds is None:
             return Observation(Connection(provider, executable, "file", _file_state(path, provider)))
         source = creds.source if provider == "claude" else ("file" if creds.path else "manual")
@@ -137,6 +140,8 @@ def observe(provider: str, config: Config, store: SecretStore | None = None) -> 
                     getattr(creds, "account_id", None), source)
         digest = hashlib.sha256(json.dumps(identity).encode()).hexdigest()
         return Observation(Connection(provider, executable, source, auth), digest)
+    except CredentialsUnreadable as exc:
+        return Observation(Connection(provider, executable, exc.detail, AuthState.UNREADABLE))
     except (OSError, ValueError, TypeError):
         return Observation(Connection(provider, executable, "unknown", AuthState.UNREADABLE))
     finally:
@@ -145,6 +150,12 @@ def observe(provider: str, config: Config, store: SecretStore | None = None) -> 
 
 def inspect(provider: str, config: Config, store: SecretStore | None = None) -> Connection:
     return observe(provider, config, store).connection
+
+
+def keychain_refused(observation: Observation) -> bool:
+    """True when macOS refused the keychain read, as opposed to finding no credentials."""
+    connection = observation.connection
+    return connection.source == "keychain" and connection.auth == AuthState.UNREADABLE
 
 
 def login_command(provider: str) -> str:

@@ -22,6 +22,7 @@ class Status(str, Enum):
     NOT_CONFIGURED = "not_configured"  # provider not installed / not logged in
     EXPIRED = "expired"                # credentials present but past expiry
     UNAUTHORIZED = "unauthorized"      # 401 from the API
+    UNREADABLE = "unreadable"          # credentials exist but could not be read (keychain refused)
     RATE_LIMITED = "rate_limited"      # 429 and no cache to fall back on
     SCHEMA_CHANGED = "schema_changed"  # HTTP 200 but the fields we need are gone
     ERROR = "error"                    # anything else
@@ -32,8 +33,8 @@ class Status(str, Enum):
 
     @property
     def is_actionable(self) -> bool:
-        """True when the user has to do something (re-login, report a bug)."""
-        return self in (Status.EXPIRED, Status.UNAUTHORIZED, Status.SCHEMA_CHANGED)
+        """True when the user has to do something (re-login, allow access, report a bug)."""
+        return self in (Status.EXPIRED, Status.UNAUTHORIZED, Status.UNREADABLE, Status.SCHEMA_CHANGED)
 
 
 @dataclass(frozen=True)

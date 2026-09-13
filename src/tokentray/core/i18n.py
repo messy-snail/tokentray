@@ -57,6 +57,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "status.not_configured_codex": "Not logged into Codex",
         "status.expired_claude": "Claude Code login expired — run 'claude' in a terminal",
         "status.expired_codex": "Codex login expired — run 'codex' in a terminal",
+        "status.unreadable_claude": "Could not read Claude Code credentials from the keychain — "
+                                    "allow access when macOS asks, then refresh",
         "status.schema_changed": "The API response format changed — please file an issue",
         "status.api_error": "API error",
         "status.window_reset": "Window reset — awaiting fresh data",
@@ -168,6 +170,8 @@ STRINGS: dict[str, dict[str, str]] = {
         "status.not_configured_codex": "Codex 미로그인",
         "status.expired_claude": "Claude Code 로그인이 만료됐어요 — 터미널에서 'claude' 실행",
         "status.expired_codex": "Codex 로그인이 만료됐어요 — 터미널에서 'codex' 실행",
+        "status.unreadable_claude": "키체인에서 Claude Code 인증 정보를 읽지 못했어요 — "
+                                    "macOS가 물으면 허용한 뒤 새로고침",
         "status.schema_changed": "API 응답 형식이 바뀐 것 같아요 — 이슈로 알려주세요",
         "status.api_error": "API 오류",
         "status.window_reset": "창 리셋됨 — 새 데이터 대기 중",

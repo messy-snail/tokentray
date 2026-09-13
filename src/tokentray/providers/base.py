@@ -41,6 +41,18 @@ class SchemaError(ProviderError):
         super().__init__(Status.SCHEMA_CHANGED, detail)
 
 
+class CredentialsUnreadable(Exception):
+    """Credentials exist, but reading them was refused or went unanswered.
+
+    Not the same as "not configured": signing in again does not help, and
+    retrying without the user can mean an authorization prompt every time.
+    """
+
+    def __init__(self, detail: str) -> None:
+        super().__init__(detail)
+        self.detail = detail
+
+
 class BaseProvider:
     id: str = "base"
 
@@ -52,8 +64,13 @@ class BaseProvider:
 
     # -- subclass hooks --------------------------------------------------------
 
-    def credentials(self) -> Any | None:
-        """Return whatever ``fetch_live`` needs, or None when not set up."""
+    def credentials(self, *, interactive: bool = False) -> Any | None:
+        """Return whatever ``fetch_live`` needs, or None when not set up.
+
+        ``interactive`` is True only when the user asked for this read (a forced
+        refresh, "Check again"). A source that refused an earlier automatic read
+        is retried only then; raise CredentialsUnreadable for such a refusal.
+        """
         raise NotImplementedError
 
     def fetch_live(self, creds: Any) -> dict[str, Any]:
@@ -100,7 +117,12 @@ class BaseProvider:
         elif not force and entry is not None and entry.in_backoff(now):
             return Snapshot(provider=self.id, status=Status.ERROR, detail=entry.note or "error")
 
-        creds = self.credentials()
+        try:
+            creds = self.credentials(interactive=force)
+        except CredentialsUnreadable as exc:
+            # Like expiry, this is the user's to fix: no request, no backoff, and
+            # no cached numbers dressed up as merely stale.
+            return Snapshot(provider=self.id, status=Status.UNREADABLE, detail=exc.detail)
         if creds is None:
             return Snapshot(provider=self.id, status=Status.NOT_CONFIGURED)
 

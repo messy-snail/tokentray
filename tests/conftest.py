@@ -47,6 +47,11 @@ def isolate_environment(tmp_path, monkeypatch):
 
     ipc_user = f"pytest-{uuid.uuid4().hex}"
     monkeypatch.setattr(ipc, "_username", lambda: ipc_user)
+    # A refused keychain read is remembered for the whole process; one test's
+    # refusal must not silence the keychain for the next.
+    from tokentray.providers import claude as claude_provider
+
+    claude_provider._keychain_refused.clear()
     i18n.set_language("en")
     yield
     i18n.set_language("en")

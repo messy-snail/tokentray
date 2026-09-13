@@ -18,6 +18,7 @@ from .connections import (
     AuthState,
     Connection,
     Observation,
+    keychain_refused,
     login_command,
     observe,
 )
@@ -76,8 +77,10 @@ class LoginRecovery(QObject):
         self._jobs[key] = (self._pool.submit(self._work, key, kind), kind, generation)
 
     def _work(self, key: str, kind: str) -> Observation:
-        observation = observe(key, self.config)
-        if kind == "login" and observation.connection.executable:
+        # Only the user's own clicks read interactively: an automatic probe after
+        # a refusal could bring the authorization prompt back every two seconds.
+        observation = observe(key, self.config, interactive=kind != "probe")
+        if kind == "login" and observation.connection.executable and not keychain_refused(observation):
             launch(key, observation.connection.executable)
         return observation
 
@@ -101,7 +104,13 @@ class LoginRecovery(QObject):
             old_presentation = (session.connection, session.waiting, session.message)
             session.connection = result.connection
             session.fingerprint = result.fingerprint
-            if kind == "login":
+            if keychain_refused(result):
+                # Waiting on a terminal login does not address a keychain
+                # refusal; allowing access does. Say why and leave the retry to
+                # "Check again", which reads interactively.
+                session.waiting = False
+                session.message = "keychain"
+            elif kind == "login":
                 session.waiting = result.connection.executable is not None
                 session.changed = False
                 session.deadline = time.monotonic() + 300
@@ -159,6 +168,8 @@ class LoginRecovery(QObject):
             return []
         elif session.message in ("terminal_failed", "terminal_missing"):
             actions = [Action.COPY, Action.LOGIN]
+        elif session.message == "keychain":
+            actions = [Action.RECHECK]
         elif session.connection:
             actions = [session.connection.action, Action.RECHECK]
         else:

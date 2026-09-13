@@ -14,10 +14,13 @@ from tokentray.login_terminal import LaunchError
 
 @pytest.fixture
 def rig(qapp, monkeypatch):
-    state = {"fingerprint": "before", "executable": Path("/test/cli")}
+    state = {"fingerprint": "before", "executable": Path("/test/cli"), "source": "file",
+             "auth": AuthState.FOUND, "reads": []}
     calls, refreshed = [], []
-    def observe(key, config):
-        return Observation(Connection(key, state["executable"], "file", AuthState.FOUND), state["fingerprint"])
+    def observe(key, config, *, interactive=False):
+        state["reads"].append((key, interactive))
+        connection = Connection(key, state["executable"], state["source"], state["auth"])
+        return Observation(connection, state["fingerprint"])
     monkeypatch.setattr(recovery, "observe", observe)
     monkeypatch.setattr(recovery, "launch", lambda key, path: calls.append((key, path)))
     manager = recovery.LoginRecovery(Config({}), lambda: refreshed.append(True))
@@ -120,7 +123,7 @@ def test_slow_probe_does_not_block_ui(qapp, qtbot, monkeypatch):
     from PySide6.QtCore import QTimer
 
     release = Event()
-    def observe(key, config):
+    def observe(key, config, **_):
         release.wait(3)
         return Observation(Connection(key, None, "file", AuthState.MISSING))
     monkeypatch.setattr(recovery, "observe", observe)
@@ -154,3 +157,27 @@ def test_unchanged_probe_does_not_rebuild_panel(rig, qtbot):
     manager._submit("claude", "probe")
     idle(qtbot, manager)
     assert changes == []
+
+
+def test_refused_keychain_stops_waiting_without_opening_a_terminal(rig, qtbot):
+    manager, state, calls, refreshed = rig
+    idle(qtbot, manager)
+    state["source"], state["auth"] = "keychain", AuthState.UNREADABLE
+    manager.activate("claude", Action.LOGIN)
+    idle(qtbot, manager)
+    session = manager.sessions["claude"]
+    assert calls == []  # no terminal login while the keychain refuses
+    assert not session.waiting
+    assert session.message == "keychain"
+    assert [label for label, fn in manager.actions("claude")] == ["Check again"]
+    assert refreshed == []
+
+
+def test_only_the_users_own_actions_read_interactively(rig, qtbot):
+    manager, state, calls, refreshed = rig
+    idle(qtbot, manager)
+    manager._submit("claude", "probe")
+    idle(qtbot, manager)
+    manager.activate("claude", Action.RECHECK)
+    idle(qtbot, manager)
+    assert [interactive for key, interactive in state["reads"] if key == "claude"] == [False, False, True]

@@ -152,7 +152,12 @@ def _choose_autostart() -> None:
 
 def _login(key: str, config: Config, store: SecretStore) -> Status | None:
     """Wait locally in the interactive wizard; only fetch when credentials change."""
-    before = observe(key, config, store)
+    from .connections import keychain_refused
+
+    before = observe(key, config, store, interactive=True)
+    if keychain_refused(before):
+        say(i18n.t("connect.keychain"))
+        return
     if not before.connection.executable:
         say(i18n.t("connect.path_hint"))
         say(INSTALL_URLS[key])

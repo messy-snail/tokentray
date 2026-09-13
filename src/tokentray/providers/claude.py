@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,10 +21,17 @@ from typing import Any
 from ..core.compute import WINDOW_5H, WINDOW_7D, parse_timestamp
 from ..core.models import ExtraUsage, Snapshot, Status, UsageWindow
 from ..core.secrets import CLAUDE_ACCESS_TOKEN, SecretStore, default_store
-from .base import BaseProvider, ProviderError, SchemaError
+from .base import BaseProvider, CredentialsUnreadable, ProviderError, SchemaError
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 KEYCHAIN_SERVICE = "Claude Code-credentials"
+KEYCHAIN_ITEM_NOT_FOUND = 44  # errSecItemNotFound, as `security` exits for a missing item
+
+# Set once the keychain refuses a read. While access is refused, each `security`
+# call can bring the authorization prompt back, and both the poll timer and the
+# two-second login probe would otherwise keep calling it. Only a read the user
+# asked for tries again; a successful read clears this.
+_keychain_refused = threading.Event()
 
 
 @dataclass
@@ -43,14 +51,25 @@ class ClaudeProvider(BaseProvider):
 
     # -- credentials -----------------------------------------------------------
 
-    def credentials(self) -> ClaudeCreds | None:
+    def credentials(self, *, interactive: bool = False) -> ClaudeCreds | None:
         creds = _from_file(credentials_path())
+        refused = False
         if creds is None and sys.platform == "darwin":
-            creds = _from_keychain()
+            if interactive or not _keychain_refused.is_set():
+                try:
+                    creds = _from_keychain()
+                    _keychain_refused.clear()
+                except CredentialsUnreadable:
+                    _keychain_refused.set()
+                    refused = True
+            else:
+                refused = True
         if creds is None:
             token = self._secrets.get(CLAUDE_ACCESS_TOKEN)
             if token:
                 creds = ClaudeCreds(access_token=token, source="manual")
+        if creds is None and refused:
+            raise CredentialsUnreadable("keychain")
         return creds
 
     def precheck(self, creds: ClaudeCreds) -> Status | None:
@@ -137,7 +156,12 @@ def _from_file(path: Path) -> ClaudeCreds | None:
 
 
 def _from_keychain() -> ClaudeCreds | None:
-    """macOS stores the same JSON blob in the login keychain instead of a file."""
+    """macOS stores the same JSON blob in the login keychain instead of a file.
+
+    A missing item only means nobody is logged in. Any other failure - access
+    refused, a prompt nobody answered - is raised: retrying cannot succeed
+    without the user and may bring the prompt back each time.
+    """
     try:
         result = subprocess.run(
             ["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
@@ -146,9 +170,16 @@ def _from_keychain() -> ClaudeCreds | None:
             timeout=10,
             check=False,
         )
+    except subprocess.TimeoutExpired as exc:
+        # `security` blocks while its authorization prompt is up.
+        raise CredentialsUnreadable("keychain") from exc
     except (OSError, subprocess.SubprocessError):
         return None
-    if result.returncode != 0 or not result.stdout.strip():
+    if result.returncode == KEYCHAIN_ITEM_NOT_FOUND:
+        return None
+    if result.returncode != 0:
+        raise CredentialsUnreadable("keychain")
+    if not result.stdout.strip():
         return None
     try:
         data = json.loads(result.stdout)

@@ -216,6 +216,7 @@ def status_message(snapshot: Snapshot) -> str:
         Status.NOT_CONFIGURED: f"status.not_configured_{provider}",
         Status.EXPIRED: f"status.expired_{provider}",
         Status.UNAUTHORIZED: f"status.expired_{provider}",
+        Status.UNREADABLE: f"status.unreadable_{provider}",
         Status.SCHEMA_CHANGED: "status.schema_changed",
         Status.RATE_LIMITED: "status.rate_limited",
     }

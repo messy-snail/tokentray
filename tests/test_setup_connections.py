@@ -83,7 +83,7 @@ def test_setup_login_waits_for_change_then_checks_provider(monkeypatch, tmp_path
 
     observations = iter([Observation(connection(AuthState.EXPIRED, Path("/cli")), "before"),
                          Observation(connection(AuthState.FOUND, Path("/cli")), "after")])
-    monkeypatch.setattr(wizard, "observe", lambda *args: next(observations))
+    monkeypatch.setattr(wizard, "observe", lambda *args, **kwargs: next(observations))
     launches, fetched = [], []
     monkeypatch.setattr(wizard, "launch", lambda *args: launches.append(args))
     monkeypatch.setattr(wizard.time, "sleep", lambda seconds: None)
@@ -100,12 +100,29 @@ def test_setup_login_waits_for_change_then_checks_provider(monkeypatch, tmp_path
 def test_setup_timeout_does_not_fetch(monkeypatch, tmp_path, capsys):
     from tokentray.connections import Observation
 
-    monkeypatch.setattr(wizard, "observe", lambda *args: Observation(connection(AuthState.FOUND, Path("/cli")), "same"))
+    monkeypatch.setattr(
+        wizard, "observe", lambda *args, **kwargs: Observation(connection(AuthState.FOUND, Path("/cli")), "same"),
+    )
     monkeypatch.setattr(wizard, "launch", lambda *args: None)
     clock = iter([0, 301])
     monkeypatch.setattr(wizard.time, "monotonic", lambda: next(clock))
     wizard._login("claude", Config({}), SecretStore(tmp_path / "s.toml"))
     assert "Stopped waiting" in capsys.readouterr().out
+
+
+def test_setup_login_stops_when_the_keychain_refuses(monkeypatch, tmp_path, capsys):
+    from tokentray.connections import Observation
+
+    reads, launches = [], []
+    def observe(*args, **kwargs):
+        reads.append(kwargs.get("interactive", False))
+        return Observation(Connection("claude", Path("/cli"), "keychain", AuthState.UNREADABLE))
+    monkeypatch.setattr(wizard, "observe", observe)
+    monkeypatch.setattr(wizard, "launch", lambda *args: launches.append(args))
+    assert wizard._login("claude", Config({}), SecretStore(tmp_path / "s.toml")) is None
+    assert launches == []  # no login while the keychain refuses
+    assert reads == [True]
+    assert "Could not read the keychain" in capsys.readouterr().out.replace("\n", " ")
 
 
 @pytest.mark.parametrize("data", ['[]', '{"tokens":"broken"}'])

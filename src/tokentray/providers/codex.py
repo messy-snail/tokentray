@@ -51,7 +51,7 @@ class CodexProvider(BaseProvider):
 
     # -- credentials -----------------------------------------------------------
 
-    def credentials(self) -> CodexCreds | None:
+    def credentials(self, *, interactive: bool = False) -> CodexCreds | None:
         creds = _from_file(auth_path())
         if creds is not None:
             return creds
