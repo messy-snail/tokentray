@@ -45,7 +45,11 @@ class PollWorker(QObject):
                 snapshots = [p.fetch(force=force) for p in self._providers]
                 self.snapshots_ready.emit(snapshots)
                 if force:
-                    self.refresh_finished.emit(all(s.status == Status.OK for s in snapshots))
+                    # A service nobody signed in to is a choice, not a failed
+                    # refresh - someone using only Claude would otherwise read
+                    # "Refresh failed" every time.
+                    signed_in = [s for s in snapshots if s.status != Status.NOT_CONFIGURED]
+                    self.refresh_finished.emit(bool(signed_in) and all(s.status == Status.OK for s in signed_in))
                 if self._pending is None:
                     return
                 force, self._pending = self._pending, None

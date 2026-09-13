@@ -111,6 +111,30 @@ def test_worker_completion_reports_actual_result(qapp, isolated_config, monkeypa
     assert results == expected
 
 
+@pytest.mark.parametrize("statuses, expected", [
+    ([Status.OK, Status.NOT_CONFIGURED], [True]),
+    ([Status.NOT_CONFIGURED, Status.NOT_CONFIGURED], [False]),
+    ([Status.OK, Status.ERROR], [False]),
+    ([Status.NOT_CONFIGURED, Status.EXPIRED], [False]),
+])
+def test_a_service_nobody_signed_in_to_does_not_fail_the_refresh(
+    qapp, isolated_config, monkeypatch, statuses, expected
+):
+    from tokentray import providers
+    from tokentray.app import PollWorker
+
+    fakes = [
+        SimpleNamespace(fetch=lambda status=status, **kw: Snapshot(provider="claude", status=status))
+        for status in statuses
+    ]
+    monkeypatch.setattr(providers, "build_providers", lambda *a: fakes)
+    worker = PollWorker(Config({}))
+    results = []
+    worker.refresh_finished.connect(results.append)
+    worker._run(True)
+    assert results == expected
+
+
 def test_unexpected_worker_exception_ends_refresh(qapp, isolated_config, monkeypatch):
     from tokentray import providers
     from tokentray.app import PollWorker

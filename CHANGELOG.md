@@ -62,6 +62,9 @@ run the same code.
   to hear back from the running app. The app hung up right after answering, and
   closing the server end of a named pipe throws away bytes the client has not
   read yet; it now waits for the client to hang up first.
+- "Refresh now" reported failure whenever one service was not signed in, so
+  anyone using only Claude Code or only Codex saw "Refresh failed" on every
+  click. A service nobody signed in to no longer counts against the result.
 - Closing "Notification integrations…" left its menu item dead until restart.
   The dialog deletes itself on close; the controller kept the stale wrapper, so
   the next open raised inside the slot and silently did nothing.
