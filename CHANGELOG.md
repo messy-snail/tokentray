@@ -75,9 +75,6 @@ run the same code.
   first poll and the login probe also read it at the same moment, so a denied
   keychain could ask twice before either saw the refusal; those reads now wait
   for each other.
-- Closing the notification integration window disabled the menu item for the rest
-  of the run. The dialog deletes itself on close and the controller kept the
-  wrapper, so the next open raised inside the slot and did nothing visible.
 
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;
