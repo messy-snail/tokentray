@@ -24,8 +24,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-from PySide6.QtCore import QRect, QSize, Qt
-from PySide6.QtGui import QPainter, QPalette, QPixmap
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt
+from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPalette, QPixmap
 from PySide6.QtWidgets import QApplication, QWidget
 
 from tokentray.core import i18n
@@ -41,7 +41,7 @@ from tokentray.ui.popup import Toast
 
 NOW = datetime(2026, 9, 14, 3, 0, tzinfo=timezone.utc)
 RATIO = 2  # device pixels per logical pixel, so the images stay sharp on HiDPI screens
-NAMES = ("tray-icons", "panel", "toast-alert", "login-recovery", "integrations")
+NAMES = ("hero", "login-recovery", "integrations")
 HOUR = 3600
 DAY = 24 * HOUR
 
@@ -95,12 +95,12 @@ def settle() -> None:
         QApplication.processEvents()
 
 
-def capture(widget: QWidget, path: Path) -> None:
+def grab(widget: QWidget) -> QPixmap:
     pixmap = QPixmap(widget.size() * RATIO)
     pixmap.setDevicePixelRatio(RATIO)
     pixmap.fill(Qt.GlobalColor.transparent)
     widget.render(pixmap)
-    pixmap.save(str(path))
+    return pixmap
 
 
 def render_icons(dark: bool) -> QPixmap:
@@ -181,6 +181,53 @@ def render_integrations(scratch: Path) -> IntegrationDialog:
     return dialog
 
 
+def render_hero(dark: bool) -> QPixmap:
+    """The README's lead image: the panel, an alert card and the tray icons on one backdrop."""
+    panel, toast = render_panel(usage_views()), render_toast()
+    try:
+        panel_shot, toast_shot = grab(panel), grab(toast)
+    finally:
+        panel.close()
+        toast.close()
+        settle()
+    icon_shot = render_icons(dark)
+
+    def logical(pixmap: QPixmap) -> QSize:
+        return pixmap.size() / RATIO
+
+    pad, gap = 24, 8
+    panel_size, toast_size, icon_size = logical(panel_shot), logical(toast_shot), logical(icon_shot)
+    column = max(toast_size.width(), icon_size.width())
+    width = pad + panel_size.width() + gap + column + pad
+    height = pad + panel_size.height() + pad
+
+    canvas = QPixmap(QSize(width, height) * RATIO)
+    canvas.setDevicePixelRatio(RATIO)
+    canvas.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(canvas)
+    try:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        gradient = QLinearGradient(QPointF(0, 0), QPointF(width, height))
+        stops = ("#1E293B", "#0B1120") if dark else ("#E0E7FF", "#F8FAFC")
+        gradient.setColorAt(0.0, QColor(stops[0]))
+        gradient.setColorAt(1.0, QColor(stops[1]))
+        backdrop = QPainterPath()
+        backdrop.addRoundedRect(QRectF(0, 0, width, height), 28, 28)
+        painter.fillPath(backdrop, gradient)
+
+        painter.drawPixmap(QPoint(pad, pad), panel_shot)
+        # Toast and icons share the right column, centred against the panel's height.
+        right = pad + panel_size.width() + gap
+        stack = toast_size.height() + 16 + icon_size.height()
+        top = pad + (panel_size.height() - stack) // 2
+        painter.drawPixmap(QPoint(right + (column - toast_size.width()) // 2, top), toast_shot)
+        icons_top = top + toast_size.height() + 16
+        painter.drawPixmap(QPoint(right + (column - icon_size.width()) // 2, icons_top), icon_shot)
+    finally:
+        painter.end()
+    return canvas
+
+
 def render_all(out: Path, language: str, dark: bool) -> list[Path]:
     """Write every README image for one language and theme; return the paths in NAMES order."""
     app = QApplication.instance()
@@ -194,9 +241,7 @@ def render_all(out: Path, language: str, dark: bool) -> list[Path]:
     try:
         with tempfile.TemporaryDirectory() as scratch:
             builders = {
-                "tray-icons": lambda: render_icons(dark),
-                "panel": lambda: render_panel(usage_views()),
-                "toast-alert": render_toast,
+                "hero": lambda: render_hero(dark),
                 "login-recovery": render_login_recovery,
                 "integrations": lambda: render_integrations(Path(scratch)),
             }
@@ -206,7 +251,7 @@ def render_all(out: Path, language: str, dark: bool) -> list[Path]:
                 if isinstance(target, QPixmap):
                     target.save(str(path))
                 else:
-                    capture(target, path)
+                    grab(target).save(str(path))
                     target.close()
                     settle()
                 paths.append(path)
