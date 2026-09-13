@@ -232,10 +232,18 @@ login keychain, the first read may show a keychain access prompt.
 AppImage or Flatpak. Run `./install.sh` from the unpacked archive to get a
 launcher entry and an icon (per-user, no root; `./install.sh --uninstall`
 reverses it). GNOME needs the AppIndicator extension for a tray at all; KDE
-works out of the box. Some distributions need `libxcb-cursor0` installed. Under
-Wayland, tokentray runs through XWayland by default because Wayland gives
+works out of the box. Qt needs a few system libraries that minimal installs,
+including stock Ubuntu 24.04, may lack:
+
+```bash
+sudo apt install libxcb-cursor0 libxkbcommon0 libegl1 libgl1 libdbus-1-3 libfontconfig1 libglib2.0-0
+```
+
+Under Wayland, tokentray runs through XWayland by default because Wayland gives
 clients limited control over popup placement. Set `linux.force_xwayland = false`
-for native Wayland and notification-centre alerts. Without a working keyring
+to run natively on Wayland instead. Alert cards still appear there, but the
+compositor decides where, so they may not sit next to the tray; with
+`native_notifications` on, the OS notification is sent as well. Without a working keyring
 service such as SecretService, secrets fall back to a local file with owner-only
 permissions, and setup reports the fallback.
 

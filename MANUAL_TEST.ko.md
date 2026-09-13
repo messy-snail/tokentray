@@ -110,7 +110,7 @@ CLI 로그아웃이나 `auth.json` 삭제를 대신 해 주지 않습니다. 16p
 | # | 확인 항목 | 상태 |
 |---|---|---|
 | 28 | Wayland 세션에서 기본적으로 XWayland를 거쳐 실행되고, 팝업이 화면 모서리에 표시됩니다. | ☐ |
-| 29 | `linux.force_xwayland = false`로 설정한 뒤 Wayland에서 재시작하면, 팝업이 잘못된 위치에 나타나는 대신 알림 센터 방식으로 전환됩니다. | ☐ |
+| 29 | `linux.force_xwayland = false`로 설정한 뒤 Wayland에서 재시작하면 XWayland 없이 네이티브로 실행됩니다. 알림 카드는 계속 표시되며(위치는 컴포지터가 결정), `native_notifications`가 켜져 있으면 OS 알림도 함께 전달됩니다. | ☐ |
 | 30 | SecretService를 사용할 수 없는 환경(`env -u DBUS_SESSION_BUS_ADDRESS`)에서 `tokentray setup`이 소유자 전용 파일로 대체 저장하고 그 사실을 안내합니다. | ☐ |
 | 31 | GNOME(AppIndicator 확장 설치)과 KDE에서 모두 동작합니다. | ☐ |
 

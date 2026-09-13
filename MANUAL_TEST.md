@@ -113,7 +113,7 @@ successful test message does not by itself verify threshold or reset reminders.
 | # | Check | |
 |---|---|---|
 | 28 | Under a Wayland session, confirm the app runs through XWayland by default and the toast is positioned in the corner. | ☐ |
-| 29 | Set `linux.force_xwayland = false`, restart under Wayland, and confirm it degrades to the notification-centre path instead of misplacing toasts. | ☐ |
+| 29 | Set `linux.force_xwayland = false`, restart under Wayland, and confirm the app runs natively (no XWayland), alert cards still appear (placement is up to the compositor), and with `native_notifications` on the OS notification is delivered too. | ☐ |
 | 30 | With no SecretService running (`env -u DBUS_SESSION_BUS_ADDRESS`), `tokentray setup` falls back to the owner-only file and says so. | ☐ |
 | 31 | Works on both GNOME (with the AppIndicator extension) and KDE. | ☐ |
 

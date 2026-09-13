@@ -219,10 +219,17 @@ Claude Code 로그인 정보가 키체인에 저장된 경우, 처음 읽을 때
 **Linux.** 빌드는 x86_64 전용입니다. 배포 형식은 tar 압축 파일이며 `.deb`, AppImage,
 Flatpak은 제공하지 않습니다. 압축을 푼 뒤 `./install.sh`를 실행하면 런처 항목과 아이콘이
 등록됩니다(사용자 단위, root 불필요. `./install.sh --uninstall`로 제거). GNOME의 트레이
-표시에는 AppIndicator 확장이 필요하고, KDE는 기본으로 지원합니다. 일부 배포판에서는
-`libxcb-cursor0` 설치가 필요합니다.
+표시에는 AppIndicator 확장이 필요하고, KDE는 기본으로 지원합니다. 최소 설치 환경에서는
+기본 Ubuntu 24.04를 포함해 Qt가 쓰는 시스템 라이브러리가 없을 수 있습니다.
+
+```bash
+sudo apt install libxcb-cursor0 libxkbcommon0 libegl1 libgl1 libdbus-1-3 libfontconfig1 libglib2.0-0
+```
+
 Wayland에서는 팝업 위치 제어가 제한되므로 기본적으로 XWayland를 거쳐 실행합니다.
-네이티브 Wayland와 알림 센터 알림을 사용하려면 `linux.force_xwayland = false`로 바꾸세요.
+네이티브 Wayland로 실행하려면 `linux.force_xwayland = false`로 바꾸세요. 이때도 알림 카드는
+표시되지만 위치를 컴포지터가 정하므로 트레이 옆에 나타나지 않을 수 있습니다.
+`native_notifications`가 켜져 있으면 OS 알림도 함께 보냅니다.
 SecretService 등 키링 서비스를 사용할 수 없으면 시크릿을 소유자 전용 권한의 로컬 파일에
 저장하고, setup에서 대체 저장 여부를 안내합니다.
 

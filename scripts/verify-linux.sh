@@ -52,13 +52,14 @@ else
 fi
 
 section "Korean glyph coverage"
-# The font stack ends in Noto/DejaVu; stock Ubuntu ships no CJK, so item 17
-# fails with tofu unless fonts-noto-cjk is installed.
+# The app bundles Pretendard, which covers Hangul, so its own windows render
+# Korean without a system font. Only the tray menu and OS notifications are
+# drawn by the desktop, so a missing system CJK font is worth a note, not a fail.
 if fc-list :lang=ko 2>/dev/null | grep . >/dev/null; then
-    ok "a Korean-capable font is installed ($(fc-list :lang=ko 2>/dev/null | wc -l) faces)"
+    ok "a Korean-capable system font is installed ($(fc-list :lang=ko 2>/dev/null | wc -l) faces)"
 else
-    bad "no font covers Korean - MANUAL_TEST item 17 will show tofu"
-    note "sudo apt install -y fonts-noto-cjk"
+    note "no system font covers Korean - app windows use bundled Pretendard, but the"
+    note "tray menu and OS notifications may show tofu: sudo apt install -y fonts-noto-cjk"
 fi
 
 section "Test suite"
