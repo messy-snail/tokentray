@@ -34,6 +34,14 @@ run the same code.
   config file and read by nothing; `auto`, `bottom-right` and `top-right` are
   honoured, and the `off` it used to offer is gone - it never did anything, so a
   config still carrying it keeps behaving as before.
+- Launching `tokentray` while it is already running now says so, with the
+  running pid and, on Windows, where hidden tray icons live. It used to exit
+  without a word, which reads exactly like a failed start. `doctor` reports the
+  running instance too.
+- The tray tooltip always leads with `tokentray`, so the entry can be found in
+  Windows' "Other system tray icons" settings, where it is otherwise a python.exe.
+- On Windows the tray icon follows the taskbar's colour mode instead of the apps'
+  mode, so light apps on a dark taskbar no longer paint a ring that all but vanishes.
 
 ### Differences from the reference implementation
 - Alerts cover every window, including Codex and the per-model sub-limits;

@@ -479,3 +479,121 @@ class TestPanel:
             panel.update_views([make_view()])
             panel._rebuild()
         panel.close()
+
+
+class FakePersonalizeKey:
+    """Just enough of winreg to answer the taskbar colour-mode question anywhere."""
+
+    HKEY_CURRENT_USER = object()
+
+    def __init__(self, values: dict) -> None:
+        self.values = values
+
+    def OpenKey(self, root, path):  # noqa: N802
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def QueryValueEx(self, key, name):  # noqa: N802
+        if name not in self.values:
+            raise FileNotFoundError(name)
+        return self.values[name], 4
+
+
+class TestTaskbarTheme:
+    """Windows sets the taskbar's colour mode apart from the apps' one."""
+
+    @pytest.fixture
+    def windows(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "win32")
+
+        def use(values):
+            monkeypatch.setattr(theme, "_winreg", lambda: FakePersonalizeKey(values))
+
+        return use
+
+    def test_follows_the_windows_mode(self, windows):
+        windows({"SystemUsesLightTheme": 0})
+        assert theme.taskbar_is_dark() is True
+        windows({"SystemUsesLightTheme": 1})
+        assert theme.taskbar_is_dark() is False
+
+    def test_light_apps_on_a_dark_taskbar_split_the_palettes(self, windows, monkeypatch):
+        # The combination that used to paint a black track onto a black taskbar.
+        windows({"SystemUsesLightTheme": 0})
+        monkeypatch.setattr(theme, "is_dark", lambda: False)
+        assert theme.taskbar() is theme.DARK
+        assert theme.current() is theme.LIGHT
+
+    @pytest.mark.parametrize("app_dark", [True, False])
+    def test_a_missing_value_falls_back_to_the_app_palette(self, windows, monkeypatch, app_dark):
+        windows({})
+        monkeypatch.setattr(theme, "is_dark", lambda: app_dark)
+        assert theme.taskbar_is_dark() is app_dark
+
+    def test_a_missing_winreg_falls_back(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "win32")
+
+        def unavailable():
+            raise ImportError("winreg")
+
+        monkeypatch.setattr(theme, "_winreg", unavailable)
+        monkeypatch.setattr(theme, "is_dark", lambda: True)
+        assert theme.taskbar_is_dark() is True
+
+    def test_other_platforms_never_touch_the_registry(self, monkeypatch):
+        monkeypatch.setattr(sys, "platform", "linux")
+        monkeypatch.setattr(theme, "_winreg", lambda: pytest.fail("registry read off Windows"))
+        monkeypatch.setattr(theme, "is_dark", lambda: False)
+        assert theme.taskbar_is_dark() is False
+
+    def test_the_icon_is_painted_with_the_palette_it_is_given(self, qapp):
+        light = icons.render_pixmap([], 32, theme.LIGHT).toImage()
+        dark = icons.render_pixmap([], 32, theme.DARK).toImage()
+        assert light != dark
+
+    def test_one_icon_asks_for_the_theme_once(self, qapp, monkeypatch):
+        calls = []
+        monkeypatch.setattr(theme, "taskbar", lambda: calls.append(1) or theme.DARK)
+        icons.build_icon([make_view()])
+        assert len(calls) == 1
+
+
+class TestTrayTooltip:
+    """Windows names the tray entry in its settings by the tooltip."""
+
+    def test_leads_with_the_app_name(self, qapp):
+        from tokentray.ui.tray import Tray
+
+        tray = Tray()
+        tray.update_views([make_view()])
+        tip = tray._icon.toolTip()
+        assert tip.startswith("tokentray - ")
+        assert "CC" in tip
+        tray.stop()
+
+    def test_no_data_is_just_the_name(self):
+        from tokentray.ui.tray import tray_tooltip
+
+        assert tray_tooltip([]) == "tokentray"
+
+    def test_a_long_summary_keeps_the_name_within_the_windows_limit(self):
+        from tokentray.ui.tray import TOOLTIP_LIMIT, tray_tooltip
+
+        tip = tray_tooltip([make_view() for _ in range(20)])
+        assert tip.startswith("tokentray - ")
+        assert len(tip) <= TOOLTIP_LIMIT
+        assert tip.endswith("\u2026")
+
+    def test_a_theme_change_repaints_from_the_last_views(self, qapp):
+        from tokentray.ui.tray import Tray
+
+        tray = Tray()
+        tray.update_views([make_view()])
+        tray._repaint_icon()
+        assert not tray._icon.icon().isNull()
+        tray.stop()

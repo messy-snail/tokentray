@@ -26,7 +26,7 @@ Korean text fits its box.
 | 3 | With both providers configured, there are two concentric rings - Claude outside, Codex inside - and each drains clockwise from the top. | ☐ | ☐ | ☐ |
 | 3a | With one provider disabled or unconfigured, the other keeps its ring position and the empty one stays a grey track; the icon does not collapse to a single fat ring. | ☐ | ☐ | ☐ |
 | 3b | A provider at 0% keeps a short coloured tick at the top, so it reads differently from one with no data at all. | ☐ | ☐ | ☐ |
-| 4 | Hovering shows a tooltip with each window's remaining percentage. | ☐ | ☐ | ☐ |
+| 4 | Hovering shows a tooltip with each window's remaining percentage. The tooltip starts with `tokentray`, which is also the entry's name under Settings > Personalization > Taskbar > Other system tray icons on Windows. | ☐ | ☐ | ☐ |
 | 5 | Right-click (Windows/Linux) or click (macOS) opens the menu; every entry is present and in the selected language. | ☐ | ☐ | ☐ |
 | 6 | Left-click opens the detail panel (Windows/Linux). | ☐ | ☐ | n/a |
 | 7 | Clicking outside the panel dismisses it. | ☐ | ☐ | ☐ |
@@ -69,6 +69,7 @@ successful test message does not by itself verify threshold or reset reminders.
 |---|---|---|---|---|
 | 14d | With `native_notifications false`, custom cards appear at the top on macOS and the bottom elsewhere by default. Set `popup.position` to `bottom-right` then `top-right`, each followed by "Test notification": the card moves without a restart and stays at the right edge. Restore native notifications afterward. OS banner placement is system-controlled. | ☐ | ☐ | ☐ |
 | 15 | Switch the OS between light and dark, restart, and confirm the toast and panel follow. | ☐ | ☐ | ☐ |
+| 15a | Windows only: set Colours to Custom with Windows mode Dark and app mode Light, then the reverse. The tray icon - including the faint ring before the first poll - stays visible on the taskbar while the panel follows the app mode. | ☐ | n/a | n/a |
 | 16 | Switch the language in the tray menu; the menu, panel and next toast are all translated. | ☐ | ☐ | ☐ |
 | 17 | Korean text renders without missing glyphs or clipping. | ☐ | ☐ | ☐ |
 | 17a | Window names use one scheme everywhere: `5 hours` / `7 days` / `7 days · Opus`, never a mix of `5-Hour Session` and `Codex 7d`. The tooltip is the only place abbreviations appear, and a sub-limit keeps its duration there (`5h·Spark`, not `Spark` twice). | ☐ | ☐ | ☐ |
@@ -78,7 +79,7 @@ successful test message does not by itself verify threshold or reset reminders.
 
 | # | Check | W | M | L |
 |---|---|---|---|---|
-| 18 | Launching a second time raises the panel instead of adding a second icon. | ☐ | ☐ | ☐ |
+| 18 | Launching a second time raises the panel instead of adding a second icon. The terminal says it is already running, with the pid and, on Windows, where hidden tray icons live. | ☐ | ☐ | ☐ |
 | 19 | `tokentray status` in a terminal reports data from the running app and prints its pid. On macOS and Linux the CLI is `dist/tokentray/tokentray`, or `tokentray.app/Contents/MacOS/tokentray` inside the bundle. | ☐ | ☐ | ☐ |
 | 20 | On a Korean or Japanese Windows console (cp949/cp932), `tokentray status` prints without a UnicodeEncodeError. | ☐ | n/a | n/a |
 | 21 | Enable start-at-login, log out and back in, and confirm it starts with no console window and no welcome toast. | ☐ | ☐ | ☐ |
@@ -94,7 +95,7 @@ successful test message does not by itself verify threshold or reset reminders.
 | 24 | Disconnect the network: the panel keeps the last numbers and marks them stale rather than blanking. | ☐ | ☐ | ☐ |
 | 25 | Log out of one CLI: that provider reports "login expired" with the command to fix it, once, not on every poll. | ☐ | ☐ | ☐ |
 | 26 | Remove `~/.codex/auth.json`: Codex reports not-configured and Claude keeps working. | ☐ | ☐ | ☐ |
-| 27 | `tokentray doctor` reports credentials, keyring backend, tray availability and the `native alerts` / `app bundle` lines correctly. | ☐ | ☐ | ☐ |
+| 27 | `tokentray doctor` reports credentials, keyring backend, tray availability and the `native alerts` / `app bundle` lines correctly. It also prints `running yes (pid N)` while the app is up and, on Windows, the hidden-icons hint. | ☐ | ☐ | ☐ |
 
 ## Linux specifics
 

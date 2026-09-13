@@ -74,6 +74,13 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.menu_bar_manager": "Using a menu bar manager like Bartender, "
                                     "Ice or Hidden Bar? You may need to unhide "
                                     "tokentray there.",
+        # Printed to a console, which may be cp949: keep to plain ASCII punctuation.
+        "launch.already_running": "tokentray is already running (pid {pid}) - opening its panel.",
+        "launch.tray_hidden_windows": "Can't see the icon? Windows hides new tray icons: click ^ next to "
+                                      "the clock, or turn it on in Settings > Personalization > Taskbar > "
+                                      "Other system tray icons.",
+        "launch.not_responding": "Another tokentray holds the lock but is not responding. End it in "
+                                 "Task Manager and try again (log: {path}).",
         "test.title": "tokentray · Notification test",
         "test.loading": "Fetching usage for notification…",
         "test.failed": "Could not fetch usage. Please try again.",
@@ -178,6 +185,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "welcome.menu_bar_manager": "Bartender, Ice, Hidden Bar 같은 메뉴 막대 관리 "
                                     "앱을 쓰고 있다면 거기서 tokentray를 보이도록 "
                                     "설정해야 할 수 있어요.",
+        "launch.already_running": "tokentray가 이미 실행 중입니다 (pid {pid}) - 상세 패널을 엽니다.",
+        "launch.tray_hidden_windows": "아이콘이 안 보이나요? Windows는 새 트레이 아이콘을 숨깁니다: 시계 옆 ^를 "
+                                      "누르거나 설정 > 개인 설정 > 작업 표시줄 > 기타 시스템 트레이 아이콘에서 켜세요.",
+        "launch.not_responding": "다른 tokentray가 잠금을 잡고 있지만 응답이 없습니다. 작업 관리자에서 "
+                                 "종료한 뒤 다시 실행하세요 (로그: {path}).",
         "test.title": "tokentray · 알림 테스트",
         "test.loading": "알림용 사용량 조회 중…",
         "test.failed": "사용량을 조회하지 못했습니다. 다시 시도해 주세요.",

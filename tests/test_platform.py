@@ -532,3 +532,66 @@ class TestIpcRoundTrip:
             qapp.processEvents()
         thread.join(timeout=2)
         return box.get("reply")
+
+
+class TestSecondLaunch:
+    """A launch that loses the single-instance race has to say why it ended."""
+
+    @pytest.fixture
+    def lose_race(self, qapp, isolated_config, monkeypatch):
+        from tokentray import app as app_mod
+        from tokentray.core import i18n
+
+        def run(reply):
+            controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))
+            monkeypatch.setattr(controller._instance, "acquire", lambda: False)
+            monkeypatch.setattr(app_mod.ipc, "send_command", lambda *a, **k: reply)
+            assert controller.start() is False
+            i18n.set_language("en")
+            return controller
+
+        return run
+
+    def test_names_the_running_pid(self, lose_race, capsys, monkeypatch):
+        from tokentray import app as app_mod
+        from tokentray.core import i18n
+
+        controller = lose_race({"ok": True, "pid": 4321})
+        assert controller.handoff_reply["pid"] == 4321
+        monkeypatch.setattr(sys, "platform", "linux")
+        app_mod.report_handoff(controller.handoff_reply)
+        out = capsys.readouterr().out
+        assert "already running (pid 4321)" in out
+        assert i18n.t("launch.tray_hidden_windows") not in out
+
+    def test_points_windows_users_at_the_hidden_icons(self, lose_race, capsys, monkeypatch):
+        from tokentray import app as app_mod
+        from tokentray.core import i18n
+
+        controller = lose_race({"ok": True, "pid": 4321})
+        monkeypatch.setattr(sys, "platform", "win32")
+        app_mod.report_handoff(controller.handoff_reply)
+        assert i18n.t("launch.tray_hidden_windows") in capsys.readouterr().out
+
+    def test_an_unanswered_lock_is_not_reported_as_running(self, lose_race, capsys):
+        from tokentray import app as app_mod
+
+        controller = lose_race(None)
+        assert controller.handoff_reply is None
+        app_mod.report_handoff(None)
+        out = capsys.readouterr().out
+        assert "not responding" in out
+        assert "already running" not in out
+
+    def test_the_gui_entry_has_no_console_and_does_not_mind(self, monkeypatch):
+        from tokentray import app as app_mod
+
+        monkeypatch.setattr(sys, "stdout", None)
+        app_mod.report_handoff({"ok": True, "pid": 4321})
+
+    def test_every_message_survives_a_korean_console(self):
+        from tokentray.core import i18n
+
+        i18n.set_language("ko")
+        for key in ("launch.already_running", "launch.tray_hidden_windows", "launch.not_responding"):
+            i18n.t(key, pid=4321, path="C:/log").encode("cp949")

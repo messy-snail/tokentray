@@ -8,6 +8,7 @@ drifting out of sync with the light one.
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 
 from PySide6.QtGui import QColor, QPalette
@@ -70,6 +71,53 @@ def is_dark() -> bool:
 
 def current() -> Palette:
     return DARK if is_dark() else LIGHT
+
+
+# Windows keeps two independent colour modes: "apps", which Qt's palette follows,
+# and "Windows", which the taskbar follows. The tray icon is painted onto the
+# taskbar, so it has to ask the second one.
+PERSONALIZE_KEY = r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+
+
+def _winreg():
+    """Seam, so the registry branch can be driven on any OS."""
+    import winreg
+
+    return winreg
+
+
+def _system_uses_light_theme() -> int | None:
+    try:
+        winreg = _winreg()
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, PERSONALIZE_KEY) as key:
+            value, _ = winreg.QueryValueEx(key, "SystemUsesLightTheme")
+    except (ImportError, OSError):
+        # No winreg off Windows; no value before Windows 10 1903.
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def taskbar_is_dark() -> bool:
+    """True when the surface the tray icon sits on is dark.
+
+    Only Windows separates this from the app theme. With Apps=Light and
+    Windows=Dark, taking the app answer paints a black-on-black track ring that
+    all but vanishes - worst of all before the first poll, when the track is
+    nearly the whole icon. Elsewhere the app palette is the best signal there is.
+    """
+    if sys.platform == "win32":
+        value = _system_uses_light_theme()
+        if value is not None:
+            return value == 0
+    return is_dark()
+
+
+def taskbar() -> Palette:
+    """Palette for the tray icon. Panels and toasts keep using :func:`current`."""
+    return DARK if taskbar_is_dark() else LIGHT
 
 
 # Bundled family first; system families cover unsupported glyphs.

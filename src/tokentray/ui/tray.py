@@ -12,7 +12,7 @@ import logging
 import sys
 
 from PySide6.QtCore import QObject, QRect, QTimer, Signal
-from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtGui import QAction, QActionGroup, QGuiApplication
 from PySide6.QtWidgets import QMenu, QSystemTrayIcon
 
 from ..core import i18n
@@ -28,6 +28,13 @@ MAX_RETRIES = 12
 # How long the OS is asked to keep a notification on screen. Advisory everywhere:
 # every platform overrides it to taste.
 MESSAGE_TIMEOUT_MS = 6_000
+
+# Windows labels the entry in Settings > Taskbar > Other system tray icons with
+# the tooltip, and the executable it records is a generic python.exe. Without the
+# name up front, the one place to un-hide the icon offers nothing to recognise.
+APP_NAME = "tokentray"
+TOOLTIP_PREFIX = f"{APP_NAME} - "
+TOOLTIP_LIMIT = 127
 
 log = logging.getLogger("tokentray.tray")
 
@@ -53,7 +60,8 @@ class Tray(QObject):
         super().__init__()
         self._icon = QSystemTrayIcon()
         self._icon.setIcon(icons.build_icon())
-        self._icon.setToolTip("tokentray")
+        self._icon.setToolTip(APP_NAME)
+        self._views: list[ProviderView] = []
         self._paused = False
         self._test_pending = False
         self._retries = 0
@@ -64,6 +72,12 @@ class Tray(QObject):
             # macOS routes every click to the context menu, so there is no
             # separate left-click to bind; elsewhere it opens the detail panel.
             self._icon.activated.connect(self._on_activated)
+
+        # A theme switch under a running app should not wait for the next poll.
+        # Qt raises this when the colour scheme it tracks changes; a switch of
+        # the Windows taskbar mode alone may not reach it, and the poll covers that.
+        if QGuiApplication.instance() is not None:
+            QGuiApplication.styleHints().colorSchemeChanged.connect(self._repaint_icon)
 
     # -- lifecycle -------------------------------------------------------------
 
@@ -95,8 +109,9 @@ class Tray(QObject):
     # -- updates ---------------------------------------------------------------
 
     def update_views(self, views: list[ProviderView]) -> None:
+        self._views = list(views)
         self._icon.setIcon(icons.build_icon(views))
-        self._icon.setToolTip(tooltip(views))
+        self._icon.setToolTip(tray_tooltip(views))
 
     def show_message(self, title: str, body: str) -> bool:
         """Submit an OS notification; True does not confirm visible delivery.
@@ -140,6 +155,9 @@ class Tray(QObject):
         self._test_action.setText(t("test.loading" if pending else "menu.test_alert"))
 
     # -- internals -------------------------------------------------------------
+
+    def _repaint_icon(self, *_: object) -> None:
+        self._icon.setIcon(icons.build_icon(self._views))
 
     def _build_menu(self) -> None:
         menu = QMenu()
@@ -208,3 +226,10 @@ class Tray(QObject):
             QSystemTrayIcon.ActivationReason.DoubleClick,
         ):
             self.open_panel.emit()
+
+
+def tray_tooltip(views: list[ProviderView]) -> str:
+    """The quota summary, led by the app name so the Windows settings list can name it."""
+    summary = tooltip(views, limit=TOOLTIP_LIMIT - len(TOOLTIP_PREFIX))
+    # tooltip() already answers with the bare name when there is nothing to say.
+    return summary if summary == APP_NAME else TOOLTIP_PREFIX + summary

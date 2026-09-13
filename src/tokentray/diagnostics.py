@@ -58,8 +58,16 @@ def report(config) -> list[str]:
     lines.append(f"thresholds          {config.thresholds}")
     lines.append(f"remind before       {config.remind_before or 'off'}")
 
+    from . import ipc
+
+    live = ipc.send_command(ipc.CMD_STATUS)
+    running = f"yes (pid {live.get('pid', '?')})" if live is not None else "no"
+    lines.append(f"running             {running}")
     facts = qt_facts()
     lines.append(f"tray                {_tray_line(facts)}")
+    if sys.platform == "win32":
+        # "Available" is true and still useless when the icon is in the overflow.
+        lines.append(f"                    {t('launch.tray_hidden_windows')}")
     lines.extend(_native_lines(config, facts))
     return lines
 

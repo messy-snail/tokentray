@@ -231,3 +231,23 @@ class TestDoctorReportsDelivery:
             'language = "en"\nnative_notifications = false\n', encoding="utf-8"
         )
         assert "native alerts       off" in runner.invoke(cli_app, ["doctor"]).stdout
+
+
+class TestDoctorFindsTheApp:
+    def test_reports_a_running_instance(self, isolated_config, monkeypatch):
+        from tokentray import ipc
+
+        monkeypatch.setattr(ipc, "send_command", lambda *a, **k: {"ok": True, "pid": 4321})
+        assert "running             yes (pid 4321)" in runner.invoke(cli_app, ["doctor"]).stdout
+
+    def test_reports_nothing_running(self, isolated_config):
+        assert "running             no" in runner.invoke(cli_app, ["doctor"]).stdout
+
+    @pytest.mark.parametrize("platform, shown", [("win32", True), ("linux", False), ("darwin", False)])
+    def test_the_hidden_icon_hint_is_for_windows(self, isolated_config, monkeypatch, platform, shown):
+        from tokentray.core import i18n
+
+        monkeypatch.setattr(sys, "platform", platform)
+        monkeypatch.setattr(diagnostics, "macos_bundle", lambda: None)
+        out = runner.invoke(cli_app, ["doctor"]).stdout
+        assert (i18n.t("launch.tray_hidden_windows") in out) is shown

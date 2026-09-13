@@ -203,7 +203,10 @@ drops notifications silently still leaves evidence.
 ## Platform notes
 
 **Windows.** New tray icons may appear under hidden icons in the taskbar. The
-welcome popup links to the relevant setting. Packaged builds are unsigned, so
+welcome popup links to the relevant setting. After that, running `tokentray`
+again prints the running pid and where hidden icons live, and `tokentray doctor`
+says whether it is running. Under Settings > Personalization > Taskbar > Other
+system tray icons the entry's name starts with `tokentray`. Packaged builds are unsigned, so
 SmartScreen may show a warning; choose *More info* then *Run anyway* to continue.
 When installed with `uv tool`, the background process appears in Task Manager
 as `pythonw.exe`.

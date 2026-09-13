@@ -91,27 +91,34 @@ def ring_bands(size: int, count: int) -> tuple[Band, ...]:
 
 def build_icon(views: list[ProviderView] | None = None) -> QIcon:
     """A multi-resolution icon so Windows, macOS and GNOME each pick a crisp size."""
+    # Resolved once per icon rather than per size: on Windows it is a registry
+    # read, and ten of them per poll would be ten answers to one question.
+    # Deliberately not cached across polls, so a theme switch is never missed.
+    palette = theme.taskbar()
     icon = QIcon()
     for size in ICON_SIZES:
-        icon.addPixmap(render_pixmap(views or [], size))
+        icon.addPixmap(render_pixmap(views or [], size, palette))
     return icon
 
 
-def render_pixmap(views: list[ProviderView], size: int) -> QPixmap:
+def render_pixmap(
+    views: list[ProviderView], size: int, palette: theme.Palette | None = None
+) -> QPixmap:
     pixmap = QPixmap(size, size)
     pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
     try:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        _paint_rings(painter, size, views)
+        _paint_rings(painter, size, views, palette or theme.taskbar())
     finally:
         painter.end()
     return pixmap
 
 
-def _paint_rings(painter: QPainter, size: int, views: list[ProviderView]) -> None:
-    palette = theme.current()
+def _paint_rings(
+    painter: QPainter, size: int, views: list[ProviderView], palette: theme.Palette
+) -> None:
     painter.setBrush(Qt.BrushStyle.NoBrush)
     # Every enabled provider keeps a slot whether or not it has data. Dropping
     # the empty ones would shuffle the remaining rings between polls, so the

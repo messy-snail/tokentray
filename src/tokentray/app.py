@@ -74,8 +74,27 @@ def main(autostart_launch: bool = False, **kwargs: Any) -> int:
     controller = Controller(app, config, autostart_launch=autostart_launch)
     if not controller.start():
         # Another instance owns the tray; it has been asked to show itself.
+        report_handoff(controller.handoff_reply)
         return 0
     return app.exec()
+
+
+def report_handoff(reply: dict | None) -> None:
+    """Say why this launch ended at once, instead of exiting without a word.
+
+    A silent exit reads exactly like a failed start, and on Windows the running
+    copy's icon is usually sitting in the hidden-icon overflow, so "nothing
+    happened" was the natural conclusion. Harmless for ``tokentray-gui``: with no
+    console attached, echo has nowhere to write and returns.
+    """
+    from .cli import echo
+
+    if reply is None:
+        echo(i18n.t("launch.not_responding", path=paths.log_file()))
+        return
+    echo(i18n.t("launch.already_running", pid=reply.get("pid", "?")))
+    if sys.platform == "win32":
+        echo(i18n.t("launch.tray_hidden_windows"))
 
 
 class Controller(QObject):
@@ -96,6 +115,9 @@ class Controller(QObject):
         self.autostart_launch = autostart_launch
         self.views: list[ProviderView] = []
         self._test_pending = False
+        # The running instance's answer when this launch lost the single-instance
+        # race; None until then, and None again if that instance never replied.
+        self.handoff_reply: dict | None = None
 
         self._state = state.load()
         self.alerts = AlertState.from_dict(self._state.get("alerts"))
@@ -148,7 +170,11 @@ class Controller(QObject):
 
     def start(self) -> bool:
         if not self._instance.acquire():
-            ipc.send_command(ipc.CMD_SHOW)
+            self.handoff_reply = ipc.send_command(ipc.CMD_SHOW)
+            if self.handoff_reply is None:
+                log.warning("another instance holds the lock but did not answer")
+            else:
+                log.info("already running (pid %s); asked it to show", self.handoff_reply.get("pid"))
             return False
 
         autostart.repair()
