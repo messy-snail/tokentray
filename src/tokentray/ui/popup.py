@@ -18,7 +18,7 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QColor, QGuiApplication, QPainter
+from PySide6.QtGui import QColor, QCursor, QGuiApplication, QPainter
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
@@ -108,6 +108,10 @@ class Toast(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         # Without this the toast steals focus from whatever the user is typing in.
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+        # A Qt::Tool window is an NSPanel that macOS hides the moment the app
+        # deactivates, which is exactly when an alert matters most - and outside
+        # an app bundle macOS delivers no banner, so the card may be all there is.
+        self.setAttribute(Qt.WidgetAttribute.WA_MacAlwaysShowToolWindow, True)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
 
         self._build(title, body, tier, fraction, detail, actions or [], usage_rows or [])
@@ -139,6 +143,7 @@ class Toast(QWidget):
         outer.setContentsMargins(SHADOW_MARGIN, SHADOW_MARGIN, SHADOW_MARGIN, SHADOW_MARGIN)
 
         card = QFrame(self)
+        self._card = card
         card.setObjectName("card")
         card.setStyleSheet(
             f"""
@@ -304,9 +309,16 @@ class Toast(QWidget):
         super().enterEvent(event)
 
     def leaveEvent(self, event: QEvent) -> None:  # noqa: N802 - Qt naming
-        if not self._sticky:
+        # Qt reports Leave when the pointer crosses onto a child, so settling on
+        # the card counted as leaving and restarted the countdown - the hover
+        # never held. Only a pointer that is really off the card ends the wait.
+        if not self._sticky and not self.hovered():
             self._dismiss.start(self._duration_ms)
         super().leaveEvent(event)
+
+    def hovered(self) -> bool:
+        """Whether the pointer is over the visible card, children included."""
+        return self._card.geometry().contains(self.mapFromGlobal(QCursor.pos()))
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt naming
         if event.button() == Qt.MouseButton.LeftButton:
@@ -440,7 +452,12 @@ class ToastManager:
         x = area.right() - toast.width() + SHADOW_MARGIN - EDGE_MARGIN
         offset = sum(t.height() - SHADOW_MARGIN * 2 + GAP for t in self._toasts[:index])
         if from_top:
-            y = area.top() - SHADOW_MARGIN + EDGE_MARGIN + offset
+            # The transparent shadow margin is wider than the edge inset, so the
+            # honest anchor sits above the work area - and macOS answers that by
+            # sliding the window back down under the menu bar. The stack below
+            # was still measured from the position we asked for, which nothing
+            # ever had, so the cards overlapped. Ask only for a legal anchor.
+            y = max(area.top(), area.top() - SHADOW_MARGIN + EDGE_MARGIN) + offset
         else:
             y = area.bottom() - toast.height() + SHADOW_MARGIN - EDGE_MARGIN - offset
         return QPoint(x, y)

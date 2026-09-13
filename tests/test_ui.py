@@ -15,7 +15,7 @@ import pytest
 
 pytest.importorskip("PySide6")
 
-from PySide6.QtCore import QSize, Qt  # noqa: E402
+from PySide6.QtCore import QEvent, QPoint, QRect, QSize, Qt  # noqa: E402
 from PySide6.QtGui import QColor  # noqa: E402
 from PySide6.QtWidgets import QApplication, QLabel, QWidget  # noqa: E402
 
@@ -362,6 +362,87 @@ class TestToastPlacement:
         assert top._toasts[0].pos().x() == bottom._toasts[0].pos().x()
         top.clear()
         bottom.clear()
+
+    def test_hovering_the_card_holds_the_countdown(self, qapp, monkeypatch):
+        """Qt sends Leave when the pointer moves onto a child widget.
+
+        Crossing the shadow margin stopped the timer and settling on the card
+        immediately restarted it, so the toast expired under the cursor.
+        """
+        from PySide6.QtCore import QPointF
+        from PySide6.QtGui import QCursor, QEnterEvent
+
+        toast = popup.Toast(title="t", body="b", duration=8)
+        toast.show()
+        card = toast._card
+        inside = toast.mapToGlobal(card.geometry().center())
+        monkeypatch.setattr(QCursor, "pos", staticmethod(lambda: inside))
+
+        point = QPointF(inside)
+        toast.enterEvent(QEnterEvent(point, point, point))
+        assert not toast._dismiss.isActive()
+        # Moving from the margin onto the card looks exactly like leaving.
+        toast.leaveEvent(QEvent(QEvent.Type.Leave))
+        assert not toast._dismiss.isActive()
+
+        outside = toast.mapToGlobal(card.geometry().topLeft()) - QPoint(50, 50)
+        monkeypatch.setattr(QCursor, "pos", staticmethod(lambda: outside))
+        toast.leaveEvent(QEvent(QEvent.Type.Leave))
+        assert toast._dismiss.isActive()
+        toast.deleteLater()
+
+    @pytest.mark.parametrize("position", ["top-right", "bottom-right"])
+    def test_the_card_follows_the_screen_the_tray_icon_is_on(self, qapp, monkeypatch, position):
+        """A second monitor is the one case the checklist cannot reach without
+        hardware, so pin the choice here: the anchor picks the screen, and the
+        primary one is only the fallback."""
+
+        class FakeScreen:
+            def __init__(self, rect):
+                self._rect = rect
+
+            def availableGeometry(self):  # noqa: N802 - Qt naming
+                return self._rect
+
+        second = QRect(2000, 100, 1000, 800)
+        monkeypatch.setattr(
+            popup.QGuiApplication, "screenAt", staticmethod(lambda _point: FakeScreen(second))
+        )
+        manager = popup.ToastManager(position=position)
+        manager._anchor = lambda: QRect(2400, 110, 24, 24)
+        manager.show_alerts([make_event()])
+
+        toast = manager._toasts[0]
+        assert second.left() <= toast.pos().x() <= second.right()
+        assert second.top() - popup.SHADOW_MARGIN <= toast.pos().y()
+        assert toast.pos().y() + toast.height() <= second.bottom() + popup.SHADOW_MARGIN * 2
+        manager.clear()
+
+    @pytest.mark.parametrize("position", ["top-right", "bottom-right"])
+    def test_stacked_cards_keep_a_gap_between_them(self, qapp, position):
+        """The visible card, not the widget, is what must not collide.
+
+        Each toast carries a transparent shadow margin wider than the edge
+        inset, so from the top the honest anchor lands above the work area and
+        macOS slides the window back down. The offsets below were still measured
+        from the anchor we asked for, and the cards overlapped by the difference.
+        """
+        manager = popup.ToastManager(position=position)
+        manager.show_alerts([make_event(), make_event(remaining=10, tier="red")])
+        assert len(manager._toasts) == 2
+
+        area = manager._area()[0]
+        cards = sorted(
+            (t.pos().y() + popup.SHADOW_MARGIN,
+             t.pos().y() + t.height() - popup.SHADOW_MARGIN)
+            for t in manager._toasts
+        )
+        for (_, lower), (upper, _) in zip(cards, cards[1:]):
+            assert upper - lower >= popup.GAP
+        # And the anchor stays inside the work area, which is what made the
+        # window manager move the first card in the first place.
+        assert min(t.pos().y() for t in manager._toasts) >= area.top()
+        manager.clear()
 
     @pytest.mark.parametrize(
         "stored, expected",
