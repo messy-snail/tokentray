@@ -1,111 +1,185 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/packaging/resources/tokentray-256.png" alt="tokentray icon" width="96">
+
 # tokentray
 
-[![English](https://img.shields.io/badge/README-English-2563EB?style=flat-square)](https://github.com/messy-snail/tokentray/blob/main/README.md)
-[![한국어](https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-64748B?style=flat-square)](https://github.com/messy-snail/tokentray/blob/main/README.ko.md)
+**Claude Code and Codex usage limits, right in your system tray.**
 
-[![CI](https://img.shields.io/github/actions/workflow/status/messy-snail/tokentray/ci.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/messy-snail/tokentray/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![Qt](https://img.shields.io/badge/Qt-PySide6-41CD52?style=flat-square&logo=qt&logoColor=white)](https://doc.qt.io/qtforpython-6/)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-6B7280?style=flat-square)
 [![PyPI](https://img.shields.io/pypi/v/tokentray?style=flat-square&logo=pypi&logoColor=white&label=PyPI&color=3775A9)](https://pypi.org/project/tokentray/)
 [![Release](https://img.shields.io/github/v/release/messy-snail/tokentray?style=flat-square&logo=github&logoColor=white&label=release&color=8957E5)](https://github.com/messy-snail/tokentray/releases/latest)
+[![CI](https://img.shields.io/github/actions/workflow/status/messy-snail/tokentray/ci.yml?style=flat-square&logo=githubactions&logoColor=white&label=CI)](https://github.com/messy-snail/tokentray/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)][LICENSE]
 
-A system-tray monitor for **Claude Code** and **OpenAI Codex** usage limits.
-Check your remaining quota and get desktop alerts before it runs out.
-Available for Windows, macOS and Linux.
+![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D)
+![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)
+![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)
 
-<!-- Demo recording: add docs/images/demo.gif, then uncomment.
-<p align="center">
-  <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/demo.gif" alt="Clicking the tokentray tray icon opens the usage panel" width="720">
-</p>
--->
+**English** · [한국어](https://github.com/messy-snail/tokentray/blob/main/README.ko.md)
 
-> **Attribution.** tokentray is a from-scratch reimplementation derived from
-> [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
-> (MIT), originally a SwiftBar plugin and a PowerShell tray script. tokentray
-> follows its quota endpoints, pace and exhaustion formulas, and colour tiers.
-> Its MIT notice is preserved in [LICENSE]. The Python implementation brings
-> a shared interface and notification features to all three platforms.
-
-## What it shows
-
-- **Claude Code** - 5-hour and 7-day limits, Opus/Sonnet limits once used,
-  and pay-as-you-go Extra Usage.
-- **Codex** - the usage periods reported for your plan, model-specific limits,
-  and credits. A weekly-only account limit appears as a 7-day row. Model-specific
-  limits are shown even at 0% usage, so any separate 5-hour limit remains visible.
-- For each period: remaining percentage, time to reset, **usage pace**, and
-  estimated time to exhaustion. A pace of 1.0x means the quota is projected to
-  run out at reset if your average usage rate stays the same.
+</div>
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-en-dark.png">
-    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/panel-en-light.png" alt="Detail panel with Claude Code and Codex limits: remaining percentage, reset time, burn-out estimate and pace" width="360">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/hero-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/hero-en-light.png" alt="tokentray detail panel, an alert card and tray icon states" width="760">
   </picture>
 </p>
 
-The tray icon uses rings that drain clockwise from the top. With both services
-enabled, Claude is outside and Codex is inside. Colour follows the remaining
-percentage rounded down to a whole number: green above 50%, amber from 21% to
-50%, and red at 20% or below. A service with no usage data has a grey ring.
+## Features
+
+- 🟢 **Tray rings at a glance** - Claude on the outside, Codex inside. Green above
+  50% left, amber down to 21%, red at 20% or below, grey without data.
+- 📊 **Detail panel** - remaining %, time to reset, burn-out estimate and pace for
+  every limit, including Opus/Sonnet and Codex model limits.
+- 🔔 **Alerts before you run out** - at 50, 25 and 10% remaining, plus reminders
+  before a reset.
+- 🔑 **One-click login recovery** - opens a terminal with `claude auth login` or
+  `codex login` when a login expires.
+- 🌐 **Webhooks** - forward alerts to Slack, Discord, ntfy or any HTTP endpoint.
+- 🖥️ **Windows, macOS and Linux**, in English or Korean.
+
+A pace of **1.0x** means you will hit the limit exactly at reset if you keep
+going at your average rate so far.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-en-dark.png">
-    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/tray-icons-en-light.png" alt="Tray icon states: green, amber and red rings, and a grey outer ring for a service without data" width="376">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-light.png" alt="Expired Claude Code login with Log in and Check again buttons" width="250">
+  </picture>
+  &nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-dark.png">
+    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-light.png" alt="Notification integrations window with a Discord webhook" width="344">
   </picture>
 </p>
 
 ## Install
 
-### Download
+> [!TIP]
+> **uv is the recommended way.** It downloads a matching Python for you and keeps
+> tokentray in its own environment, so nothing else on your system changes.
 
-Builds on [Releases](https://github.com/messy-snail/tokentray/releases/latest)
-bundle their own Python, so there is nothing else to install.
+### ![uv](https://img.shields.io/badge/uv-recommended-DE5FE9?style=flat-square&logo=uv&logoColor=white)
 
-| Platform | File | Then |
-|---|---|---|
-| Windows x86_64 | `tokentray-windows-x86_64.zip` | Unzip and run `tokentray\tokentray-gui.exe` |
-| macOS Apple silicon | `tokentray-macos-arm64.zip` | Move `tokentray.app` to Applications and clear the quarantine flag |
-| Linux x86_64 | `tokentray-linux-x86_64.tar.gz` | Unpack and run `./install.sh` for a launcher entry |
+Install uv once:
 
-The builds are not code-signed. See
-[Platform notes](https://github.com/messy-snail/tokentray#platform-notes) for the
-Windows SmartScreen prompt, the macOS quarantine command and Linux system packages.
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-### With uv
+```powershell
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
-With Python 3.11-3.13 and [uv](https://docs.astral.sh/uv/):
+`brew install uv` and `winget install --id=astral-sh.uv -e` work too. Then:
 
 ```bash
 uv tool install tokentray
 ```
 
-For the latest unreleased code, use
-`uv tool install git+https://github.com/messy-snail/tokentray` instead.
+If the shell cannot find `tokentray` afterwards, run `uv tool update-shell` and
+open a new terminal.
 
-### Set up
-
-Run setup once. A download ships the `tokentray` CLI next to the GUI executable
-(inside `tokentray.app/Contents/MacOS` on macOS).
+### pipx
 
 ```bash
-tokentray setup
+pipx install tokentray
 ```
 
-Setup first asks for a language, then shows CLI availability and credential status
-separately. Install and sign in to [Claude Code](https://code.claude.com/docs/en/setup)
-or [Codex](https://developers.openai.com/codex/cli/); you only need the service you use.
-Existing credentials and manual tokens can work even if the CLI is not found.
-A detected token is shown as unverified until a usage request succeeds.
+### pip
 
-For missing or expired credentials, choose login, installation instructions, or
-check again. You can also skip, disable a provider, or paste a token. Setup offers
-to start TokenTray when you log in to your computer.
+Needs Python 3.11-3.13. Install into a virtual environment:
 
-## Commands
+```bash
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+python -m pip install tokentray
+```
+
+### Standalone builds (no Python needed)
+
+| Platform | Download | Then |
+|---|---|---|
+| ![Windows](https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D) | [`tokentray-windows-x86_64.zip`](https://github.com/messy-snail/tokentray/releases/latest/download/tokentray-windows-x86_64.zip) | Unzip, run `tokentray\tokentray-gui.exe` |
+| ![macOS](https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white) | [`tokentray-macos-arm64.zip`](https://github.com/messy-snail/tokentray/releases/latest/download/tokentray-macos-arm64.zip) | Move `tokentray.app` to Applications |
+| ![Linux](https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black) | [`tokentray-linux-x86_64.tar.gz`](https://github.com/messy-snail/tokentray/releases/latest/download/tokentray-linux-x86_64.tar.gz) | Unpack, run `./install.sh` |
+
+> [!IMPORTANT]
+> Standalone builds are not code-signed, so Windows SmartScreen and macOS
+> Gatekeeper warn on first launch. See
+> [Platform notes](https://github.com/messy-snail/tokentray#platform-notes).
+
+## Quick start
+
+Sign in to [Claude Code](https://code.claude.com/docs/en/setup) or
+[Codex](https://developers.openai.com/codex/cli/) first - one of them is enough.
+
+```bash
+tokentray setup              # choose a language, check logins, offer start-at-login
+tokentray                    # start the tray app
+```
+
+With a standalone build, the `tokentray` CLI sits next to the app (inside
+`tokentray.app/Contents/MacOS` on macOS).
+
+## Alerts and polling
+
+| Setting | Default | What it does |
+|---|---|---|
+| `poll_interval` | `120` | Seconds between usage checks (minimum 30) |
+| `thresholds` | `50,25,10` | Remaining % that raises an alert |
+| `remind_before` | `60,30,10` | Minutes before a reset to remind you |
+| `popup.duration` | `8` | Seconds an alert card stays up |
+| `popup.position` | `auto` | `bottom-right`, `top-right`, or `auto` (top on macOS, bottom elsewhere) |
+| `native_notifications` | Windows `false`, others `true` | Also send OS notifications |
+
+```bash
+tokentray config set poll_interval 300    # check every 5 minutes
+tokentray config set thresholds 50,20,5   # alert at 50%, 20% and 5% left
+tokentray config set remind_before 30,10  # remind 30 and 10 minutes before reset
+tokentray config get thresholds
+```
+
+Changes reach the running app straight away, except `poll_interval` and
+`language`, which apply after a restart. `tokentray config path` shows where the
+config file lives.
+
+> [!TIP]
+> Need some quiet? Choose **Pause alerts for 1 hour** in the tray menu. **Test
+> notification** previews the alert cards with fresh data.
+
+<details>
+<summary><b>More settings and webhooks</b></summary>
+
+| Setting | Default | What it does |
+|---|---|---|
+| `language` | from locale | `en` or `ko` |
+| `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | External alerts via `slack`, `discord`, `ntfy` or `generic` |
+| `codex.refresh` | `false` | Let tokentray refresh the Codex token |
+| `linux.force_xwayland` | `true` | See Platform notes |
+
+Choose **Notification integrations…** in the tray menu to set up one webhook,
+validate the URL and send a test, or use the terminal:
+
+```bash
+tokentray webhook setup --service slack
+tokentray webhook test
+```
+
+The URL is kept in the OS keyring. Alerts are only sent while tokentray runs on
+a device that is online; if several devices watch the same account, enable
+webhooks on just one to avoid duplicates. For Slack, set
+`packaging/resources/tokentray-512.png` as the app icon; Discord lets you set
+the webhook avatar in the channel settings.
+
+</details>
+
+<details>
+<summary><b>All commands</b></summary>
 
 | Command | Description |
 |---|---|
@@ -116,236 +190,137 @@ to start TokenTray when you log in to your computer.
 | `tokentray doctor` | Check credentials, keyring, tray and notification delivery |
 | `tokentray config get/set/path` | Read and write settings |
 | `tokentray state reset --welcome/--alerts/--all` | Re-arm the first-run notice or the alert memory |
-| `tokentray webhook setup/test` | Configure and test Slack, Discord, ntfy, or a generic webhook |
+| `tokentray webhook setup/test` | Configure and test a webhook |
 | `tokentray autostart enable/disable/status` | Manage start-at-login |
 
-## Login credentials
-
-tokentray reads the credentials saved on your machine by Claude Code and Codex.
-**Claude token refresh is left to Claude Code** to avoid conflicting updates.
-When a login expires, click **Log in** in the detail panel or the in-app alert.
-TokenTray opens a terminal running `claude auth login` or `codex login` on Windows,
-macOS, or Linux. It watches for credential changes for up to five minutes and
-refreshes usage after a change. Cancelling the wait does not close your terminal;
-you can finish signing in and refresh later. If no terminal can be opened, copy
-the displayed command. If the CLI is not found, open the installation guide and
-check again; an installed CLI may also be missing from the app's `PATH`.
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-dark.png">
-    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/login-recovery-en-light.png" alt="Detail panel with an expired Claude Code login and Log in and Check again buttons" width="360">
-  </picture>
-</p>
-
-`tokentray doctor` shows the same local CLI and credential detection results.
-Opening an installation guide does not install software automatically.
-
-| Service | Location |
-|---|---|
-| Claude Code | `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`), falling back to the macOS login keychain |
-| Codex | `~/.codex/auth.json` (or `$CODEX_HOME`) |
-
-If the credentials file contains plan metadata but no usable `accessToken`,
-`tokentray doctor` reports `no token in file`. This can happen when authentication
-is handled elsewhere, such as through a desktop app, and does not necessarily
-mean you are logged out.
-
-You can also paste a token during `setup`. It is stored in your OS keyring,
-with a separate local secret file as a fallback if the keyring is unavailable
-(see Privacy). A pasted Claude token is temporary: tokentray cannot renew it
-when it expires.
-
-Codex token refresh is **opt-in** (`tokentray config set codex.refresh true`)
-because file-based credentials share `auth.json` with the Codex CLI. Before
-writing refreshed credentials, tokentray re-reads that file and skips the write
-if the CLI has changed it in the meantime.
-
-## Configuration
-
-`tokentray config path` prints the configuration and data paths. `tokentray config
-set` hands the change to a running instance, so thresholds, reminders, popup
-position and duration, and `native_notifications` all apply straight away;
-`poll_interval` and `language` still need a restart. Common settings:
-
-| Key | Default | Description |
-|---|---|---|
-| `poll_interval` | `120` | Seconds between checks (minimum 30) |
-| `thresholds` | `[50, 25, 10]` | Remaining % that trigger an alert |
-| `remind_before` | `[60, 30, 10]` | Reminder times in minutes before reset; empty disables |
-| `language` | from locale | `en` or `ko` |
-| `popup.position` | `auto` | Which corner toasts stack from: `auto`, `bottom-right`, `top-right`. `auto` follows the platform - top on macOS, bottom elsewhere |
-| `popup.duration` | `8` | Seconds a toast stays up |
-| `native_notifications` | Windows: `false`; others: `true` | Opt into OS alerts on Windows; additional OS delivery elsewhere. Also applies to **Test notification** |
-| `webhook.enabled` / `webhook.kind` | `false` / `ntfy` | Enable external alerts and choose `slack`, `discord`, `ntfy`, or `generic` |
-| `codex.refresh` | `false` | Let tokentray refresh the Codex token |
-| `linux.force_xwayland` | `true` | See below |
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-dark.png">
-    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/integrations-en-light.png" alt="Notification integrations window with a Discord webhook selected" width="420">
-  </picture>
-</p>
-
-Choose **Notification integrations…** from the tray menu to configure one
-outbound destination, validate its URL and send a test. Slack and Discord use
-their Incoming Webhook feature. The URL is stored in the OS keyring, or a separate
-local secret file if the keyring is unavailable (see Privacy). You can also
-configure it from a terminal:
-
-```bash
-tokentray webhook setup --service slack
-tokentray webhook test
-```
-
-> **Notification requirements**
->
-> External alerts are sent by a device running tokentray with an internet
-> connection. Monitoring usage also requires valid login credentials. Quitting
-> the app, shutting down the device, or putting it to sleep stops its checks and
-> delivery. Closing the detail window leaves monitoring active in the tray.
->
-> Multiple devices monitoring the same account and sending to the same
-> destination can produce duplicate alerts. Enable external alerts on only one
-> device; the others can still show desktop alerts. There is no automatic
-> handover if the sending device stops running.
-
-Slack takes the sender name and icon from the Slack app that owns the webhook,
-so set the included `packaging/resources/tokentray-512.png` as that app's icon.
-Discord likewise lets you set the webhook avatar in the channel settings.
-
-## Notifications
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-en-dark.png">
-    <img src="https://raw.githubusercontent.com/messy-snail/tokentray/main/docs/images/toast-alert-en-light.png" alt="Alert card: Claude Code 7 days Opus at 14% remaining, with reset time and pace" width="452">
-  </picture>
-</p>
-
-Windows uses custom quota cards by default, with provider icons and progress bars.
-**Test notification** fetches fresh usage in the background and shows one card per
-service, with a labelled remaining-quota meter and reset time for each limit.
-The test menu is disabled while fetching; repeated requests share that test.
-Unavailable services show their status, and cached results are marked as previous
-data. The test updates the panel without firing automatic alerts, changing their
-history, or sending webhooks. Set `native_notifications = true` to opt into
-Windows OS banners instead (one text summary for the test). Unsupported native delivery or a submission error also
-falls back to custom cards; a successful submission does not guarantee that
-Windows displays a banner. Windows controls native banner position and duration;
-`popup.position` and `popup.duration` apply only to custom cards.
-
-Welcome notices and batches containing login recovery alerts retain custom cards
-without an additional Windows banner, preserving their existing action buttons
-and grouping. macOS and Linux retain custom cards with optional OS delivery.
-External notifications follow their own settings independently.
-
-On macOS, notification-centre delivery from a tray icon is unreliable: Qt's macOS
-backend still uses the notification API Apple deprecated in macOS 11, and macOS
-wants a signed bundle, while the builds here are ad-hoc signed only. The in-app
-toast is therefore the primary channel, not a fallback. `tokentray doctor` reports
-the situation for your build, **Test notification** in the tray menu fires both
-channels so you can tell them apart, and every OS attempt is written to the log
-(**Open log** in the tray menu, or `tokentray config path`) - so a channel that
-drops notifications silently still leaves evidence.
+</details>
 
 ## Platform notes
 
-**Windows.** New tray icons may appear under hidden icons in the taskbar. The
-welcome popup links to the relevant setting. After that, running `tokentray`
-again prints the running pid and where hidden icons live, and `tokentray doctor`
-says whether it is running. Under Settings > Personalization > Taskbar > Other
-system tray icons the entry's name starts with `tokentray`. Packaged builds are unsigned, so
-SmartScreen may show a warning; choose *More info* then *Run anyway* to continue.
-When installed with `uv tool`, the background process appears in Task Manager
-as `pythonw.exe`.
+<details>
+<summary><img src="https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6TTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6TTEyLjYgMTIuNkgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D" alt="Windows"></summary>
 
-**macOS.** Builds are ad-hoc signed but not notarised. If Gatekeeper blocks a
-downloaded app, remove its quarantine attribute:
+- A new tray icon may land among the hidden icons. The welcome card links to the
+  taskbar setting, where the entry's name starts with `tokentray`.
+- On the SmartScreen prompt for a standalone build, choose *More info* then
+  *Run anyway*.
+- Installed with uv or pip, the background process shows in Task Manager as
+  `pythonw.exe`.
 
-```bash
-xattr -dr com.apple.quarantine /Applications/tokentray.app
-```
+</details>
 
-The app is menu-bar only (`LSUIElement`), so there is no Dock icon by design.
-Run `tokentray doctor` for the notification-centre verdict on your build. If you
-use a menu bar manager (Bartender, Ice, Hidden Bar), note that it lists an
-unbundled run as *Python* rather than *tokentray*.
-Builds are arm64 only - there is no Intel build. The CLI ships inside the
-bundle, so `status`, `doctor` and `autostart` are at
-`/Applications/tokentray.app/Contents/MacOS/tokentray`; symlink it onto your
-PATH to use `tokentray` directly. If Claude Code credentials are stored in the
-login keychain, the first read may show a keychain access prompt.
+<details>
+<summary><img src="https://img.shields.io/badge/macOS-000000?style=flat-square&logo=apple&logoColor=white" alt="macOS"></summary>
 
-**Linux.** Builds are x86_64 only. Shipped as a tarball only - no `.deb`,
-AppImage or Flatpak. Run `./install.sh` from the unpacked archive to get a
-launcher entry and an icon (per-user, no root; `./install.sh --uninstall`
-reverses it). GNOME needs the AppIndicator extension for a tray at all; KDE
-works out of the box. Qt needs a few system libraries that minimal installs,
-including stock Ubuntu 24.04, may lack:
+- Builds are ad-hoc signed, not notarised. If Gatekeeper blocks the app:
 
-```bash
-sudo apt install libxcb-cursor0 libxkbcommon0 libegl1 libgl1 libdbus-1-3 libfontconfig1 libglib2.0-0
-```
+  ```bash
+  xattr -dr com.apple.quarantine /Applications/tokentray.app
+  ```
 
-Under Wayland, tokentray runs through XWayland by default because Wayland gives
-clients limited control over popup placement. Set `linux.force_xwayland = false`
-to run natively on Wayland instead. Alert cards still appear there, but the
-compositor decides where, so they may not sit next to the tray; with
-`native_notifications` on, the OS notification is sent as well. Without a working keyring
-service such as SecretService, secrets fall back to a local file with owner-only
-permissions, and setup reports the fallback.
+- Apple silicon only. The app lives in the menu bar, so there is no Dock icon.
+- The CLI is at `/Applications/tokentray.app/Contents/MacOS/tokentray`; symlink
+  it onto your `PATH` to type `tokentray`.
+- Reading Claude Code credentials from the login keychain may show an access
+  prompt the first time.
+- Notification Center delivery from a tray app is unreliable, so tokentray's own
+  alert cards are the main channel. `tokentray doctor` shows what your build can do.
+
+</details>
+
+<details>
+<summary><img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux"></summary>
+
+- x86_64 tarball only. `./install.sh` adds a launcher entry and icon for your
+  user; `./install.sh --uninstall` removes them.
+- Qt needs a few system libraries that minimal installs, including stock Ubuntu
+  24.04, may lack:
+
+  ```bash
+  sudo apt install libxcb-cursor0 libxkbcommon0 libegl1 libgl1 libdbus-1-3 libfontconfig1 libglib2.0-0
+  ```
+
+- GNOME needs the AppIndicator extension to show a tray icon; KDE works out of
+  the box.
+- On Wayland, tokentray runs through XWayland so alert cards can sit next to the
+  tray. With `linux.force_xwayland = false` it runs natively, but the compositor
+  decides where cards appear.
+- Without a keyring service such as SecretService, secrets fall back to an
+  owner-only local file, and setup tells you so.
+
+</details>
+
+## More details
+
+<details>
+<summary><b>Login credentials</b></summary>
+
+tokentray reads the credentials Claude Code and Codex already saved:
+
+| Service | Location |
+|---|---|
+| Claude Code | `~/.claude/.credentials.json` (or `$CLAUDE_CONFIG_DIR`), then the macOS login keychain |
+| Codex | `~/.codex/auth.json` (or `$CODEX_HOME`) |
+
+- **Log in** in the panel or an alert opens a terminal running the login command
+  and watches for new credentials for up to five minutes. If no terminal can be
+  opened, copy the command shown.
+- Claude token refresh is left to Claude Code. Codex refresh is opt-in
+  (`codex.refresh`) and re-reads `auth.json` before writing, so it never
+  overwrites the Codex CLI.
+- A token pasted during `setup` is stored in the OS keyring. A pasted Claude token
+  cannot be renewed when it expires.
+- `doctor` reporting `no token in file` does not always mean you are logged out:
+  the file may hold plan metadata while sign-in is handled elsewhere.
+
+</details>
+
+<details>
+<summary><b>How alerts are delivered</b></summary>
+
+- **Windows** shows tokentray's own cards. Set `native_notifications = true` for
+  Windows banners instead; if a banner cannot be submitted, the card is shown.
+  Welcome and login-recovery alerts always use cards so their buttons work.
+- **macOS and Linux** show cards and also send an OS notification.
+- **Test notification** fetches fresh usage and shows one card per service. It
+  does not touch alert history or send webhooks.
+- Every OS notification attempt is logged; open the log from the tray menu.
+
+</details>
 
 ## Privacy
 
-Claude and Codex login tokens are sent only to their respective services over
-HTTPS: `api.anthropic.com`, `chatgpt.com` and `auth.openai.com`. Configured
-webhooks receive notification content, not those login tokens. There is no
-telemetry. On macOS and Linux, the caches and the fallback secret file are
-written owner-only (`0600`); on Windows they inherit the ACL of your user
-profile directory, which is
-user-scoped by default but not narrowed further.
+> [!NOTE]
+> No telemetry. Claude and Codex tokens are sent only to `api.anthropic.com`,
+> `chatgpt.com` and `auth.openai.com` over HTTPS. Webhooks receive alert text,
+> never tokens.
 
-## Development
+Caches and the fallback secret file are owner-only (`0600`) on macOS and Linux;
+on Windows they inherit your user profile's permissions.
 
-```bash
-uv sync
-uv run pytest
-```
+## Contributing
 
-Widget tests run under Qt's offscreen platform. Real desktop appearance and
-external notification delivery require the checks in [MANUAL_TEST.md].
+Bug reports, ideas and pull requests are welcome, in English or Korean.
 
-Packaged builds:
-
-```bash
-uv run pyinstaller --noconfirm --distpath dist --workpath build packaging/tokentray.spec
-./packaging/smoke.sh
-```
-
-`smoke.sh` is what CI and the release workflow both run against a fresh bundle -
-it checks that both executables exist, that the windowed one answers `--version`
-instead of starting an event loop, and that the macOS bundle launches the GUI
-rather than the CLI.
-
-Icon files are generated by the tray icon renderer. Regenerate and commit them
-after changing the icon design:
-
-```bash
-QT_QPA_PLATFORM=offscreen uv run python packaging/make_icons.py
-```
-
-On a Linux machine, `./scripts/verify-linux.sh` runs everything about a desktop
-that can be checked without a person watching, and prints what is left for
-[MANUAL_TEST.md].
+- 🐛 **Found a bug?** Open a [bug report](https://github.com/messy-snail/tokentray/issues/new?template=bug_report.yml)
+  with `tokentray --version` and `tokentray doctor` output.
+- 💡 **Have an idea?** Open a [feature request](https://github.com/messy-snail/tokentray/issues/new?template=feature_request.yml).
+- 🔒 **Security issue?** Report it privately - see [SECURITY.md].
+- 🛠️ **Want to send code?** Start with [CONTRIBUTING.md].
 
 ## License
 
-MIT - see [LICENSE]. tokentray bundles Qt via PySide6, which is LGPLv3;
-packaged builds include it as a dynamically linked library.
+MIT - see [LICENSE]. Standalone builds bundle Qt through PySide6 (LGPLv3) as
+dynamically linked libraries.
+
+> [!NOTE]
+> tokentray is a from-scratch Python reimplementation derived from
+> [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
+> (MIT). It follows that project's quota endpoints, pace and burn-out formulas
+> and colour tiers; its MIT notice is kept in [LICENSE].
 
 <!-- Absolute, because this file is also the PyPI long description and a
      relative link there resolves against pypi.org. -->
 [LICENSE]: https://github.com/messy-snail/tokentray/blob/main/LICENSE
-[MANUAL_TEST.md]: https://github.com/messy-snail/tokentray/blob/main/MANUAL_TEST.md
+[SECURITY.md]: https://github.com/messy-snail/tokentray/blob/main/SECURITY.md
+[CONTRIBUTING.md]: https://github.com/messy-snail/tokentray/blob/main/CONTRIBUTING.md
