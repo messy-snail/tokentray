@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/messy-snail/tokentray/security/advisories/new
+    about: Token handling, keyring storage or webhook problems - please report privately, not as a public issue.

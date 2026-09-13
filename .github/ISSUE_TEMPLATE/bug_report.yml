@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in tokentray does not work as described. 한국어로 작성해도 됩니다.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please **never paste login tokens, webhook URLs or your
+        email address**. `tokentray doctor` prints no tokens, but its file paths can
+        contain your user name - edit those out if that matters to you.
+        Security problems belong in a private report instead: see SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: tokentray version
+      description: Output of `tokentray --version`.
+      placeholder: tokentray 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Release download (zip / tar.gz)
+        - uv tool install tokentray
+        - From source (git clone)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Include the version, and on Linux the desktop and session type (`echo $XDG_SESSION_TYPE`).
+      placeholder: Ubuntu 24.04, GNOME, Wayland / Windows 11 24H2 / macOS 15.6
+    validations:
+      required: true
+  - type: checkboxes
+    id: services
+    attributes:
+      label: Which services are signed in?
+      options:
+        - label: Claude Code
+        - label: Codex
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: Screenshots help, especially for tray, panel or notification problems.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start tokentray
+        2. Click the tray icon
+        3. ...
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `tokentray doctor`
+      description: On macOS packaged builds the CLI is at `/Applications/tokentray.app/Contents/MacOS/tokentray`.
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant log lines
+      description: Tray menu → **Open log**. The lines around the time of the problem are enough.
+      render: text
+  - type: checkboxes
+    id: redacted
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed tokens, webhook URLs and email addresses from everything above.
+          required: true
