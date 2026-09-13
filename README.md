@@ -27,6 +27,13 @@
   </picture>
 </p>
 
+> [!NOTE]
+> **Credits.** tokentray is a from-scratch Python reimplementation derived from
+> [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
+> (MIT), originally a SwiftBar plugin and a PowerShell tray script. It follows that
+> project's quota endpoints, pace and burn-out formulas and colour tiers, and brings
+> them to Windows, macOS and Linux with one shared interface.
+
 ## Features
 
 - 🟢 **Tray rings at a glance** - Claude on the outside, Codex inside. Green above
@@ -310,14 +317,9 @@ Bug reports, ideas and pull requests are welcome, in English or Korean.
 
 ## License
 
-MIT - see [LICENSE]. Standalone builds bundle Qt through PySide6 (LGPLv3) as
-dynamically linked libraries.
-
-> [!NOTE]
-> tokentray is a from-scratch Python reimplementation derived from
-> [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
-> (MIT). It follows that project's quota endpoints, pace and burn-out formulas
-> and colour tiers; its MIT notice is kept in [LICENSE].
+MIT - see [LICENSE], which also keeps the MIT notice of
+[haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor).
+Standalone builds bundle Qt through PySide6 (LGPLv3) as dynamically linked libraries.
 
 <!-- Absolute, because this file is also the PyPI long description and a
      relative link there resolves against pypi.org. -->

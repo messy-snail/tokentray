@@ -27,6 +27,13 @@
   </picture>
 </p>
 
+> [!NOTE]
+> **출처.** tokentray는
+> [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
+> (MIT)를 바탕으로 Python으로 새로 구현한 프로젝트입니다. 원본의 SwiftBar 플러그인과
+> PowerShell 트레이 스크립트에서 사용량 조회 API, 사용 속도·소진 예측 공식, 색상 구간을
+> 따랐고, 세 운영체제에서 공통된 화면과 알림 기능을 제공하도록 구성했습니다.
+
 ## 주요 기능
 
 - 🟢 **트레이 링으로 한눈에** - 바깥쪽은 Claude, 안쪽은 Codex. 남은 비율 50% 초과는
@@ -302,10 +309,7 @@ macOS와 Linux에서는 캐시와 대체 시크릿 파일을 소유자 전용(`0
 
 ## 라이선스
 
-MIT - [LICENSE](LICENSE)를 참고하세요. 실행 파일은 PySide6를 통해 Qt(LGPLv3)를 동적
-링크 라이브러리로 포함합니다.
-
-> [!NOTE]
-> tokentray는 [haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)
-> (MIT)를 바탕으로 Python으로 새로 구현한 프로젝트입니다. 원본의 사용량 조회 API, 사용
-> 속도·소진 예측 공식, 색상 구간을 따랐으며 MIT 고지는 [LICENSE](LICENSE)에 유지했습니다.
+MIT - [LICENSE](LICENSE)를 참고하세요. 원본
+[haomingkoo/claude-codex-monitor](https://github.com/haomingkoo/claude-codex-monitor)의 MIT
+고지도 이 파일에 유지했습니다. 실행 파일은 PySide6를 통해 Qt(LGPLv3)를 동적 링크
+라이브러리로 포함합니다.
