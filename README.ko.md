@@ -125,11 +125,15 @@ python -m pip install tokentray
 
 ```bash
 tokentray setup              # 언어 선택, 로그인 상태 확인, 로그인 시 자동 시작 설정
-tokentray                    # 트레이 앱 시작
+tokentray                    # 백그라운드로 트레이 앱 시작, 터미널은 바로 반환
 ```
 
 실행 파일을 쓴다면 `tokentray` CLI는 앱과 같은 위치에 있습니다(macOS는
 `tokentray.app/Contents/MacOS` 안).
+
+앱이 시작되면 터미널을 닫아도 계속 실행됩니다. `setup` 마지막에 앱 시작을 선택한
+경우에도 같습니다. 종료는 트레이 메뉴나 `tokentray stop`을 사용하세요.
+디버깅할 때만 `tokentray run --foreground`로 터미널에 연결해서 실행할 수 있습니다.
 
 ## 알림과 조회 주기 설정
 

@@ -54,9 +54,12 @@ def _root(
 @app.command()
 def run(
     autostart: bool = typer.Option(False, "--autostart", hidden=True),
+    foreground: bool = typer.Option(
+        False, "--foreground", help="Keep the app attached to this terminal for debugging.",
+    ),
 ) -> None:
     """Start the tray application (same as running `tokentray` with no arguments)."""
-    raise typer.Exit(_launch_gui(autostart=autostart))
+    raise typer.Exit(_launch_gui(autostart=autostart, foreground=foreground))
 
 
 @app.command()
@@ -450,7 +453,11 @@ def _flatten(data: dict, prefix: str = "") -> list[tuple[str, object]]:
     return out
 
 
-def _launch_gui(*, autostart: bool) -> int:
+def _launch_gui(*, autostart: bool, foreground: bool = False) -> int:
+    if not foreground:
+        from .launcher import start
+
+        return start(autostart=autostart)
     try:
         from .app import main as gui_main
     except ImportError as exc:  # pragma: no cover - only without PySide6

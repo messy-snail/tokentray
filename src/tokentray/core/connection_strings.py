@@ -1,6 +1,9 @@
 """Localized connection and onboarding copy."""
 
 EN = {
+    "launch.background_started": "TokenTray is running in the background. You can close this terminal. Use 'tokentray stop' to quit.",
+    "launch.failed": "Could not start TokenTray ({error}). Check {path}, or run 'tokentray run --foreground'.",
+    "launch.pending": "Background start requested; the app is not responding yet. Check {path} if no tray icon appears.",
     "refresh.no_providers": "No connected services to refresh",
     "refresh.provider_done": "{provider} updated",
     "refresh.provider_failed": "{provider} refresh failed: {reason}",
@@ -48,6 +51,9 @@ EN = {
 }
 
 KO = {
+    "launch.background_started": "TokenTray가 백그라운드에서 실행 중이에요. 터미널을 닫아도 됩니다. 종료하려면 'tokentray stop'을 실행하세요.",
+    "launch.failed": "TokenTray를 시작하지 못했어요 ({error}). {path}를 확인하거나 'tokentray run --foreground'로 실행하세요.",
+    "launch.pending": "백그라운드 시작을 요청했지만 아직 응답이 없어요. 트레이 아이콘이 나타나지 않으면 {path}를 확인하세요.",
     "refresh.no_providers": "갱신할 연결된 서비스가 없어요",
     "refresh.provider_done": "{provider} 갱신 완료",
     "refresh.provider_failed": "{provider} 갱신 실패: {reason}",

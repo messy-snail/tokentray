@@ -127,11 +127,15 @@ Sign in to [Claude Code](https://code.claude.com/docs/en/setup) or
 
 ```bash
 tokentray setup              # choose a language, check logins, offer start-at-login
-tokentray                    # start the tray app
+tokentray                    # start in the background and return to the terminal
 ```
 
 With a standalone build, the `tokentray` CLI sits next to the app (inside
 `tokentray.app/Contents/MacOS` on macOS).
+
+Once the app starts, you can close the terminal. Starting the app at the end of
+`setup` works the same way. Quit from the tray menu or with `tokentray stop`.
+For debugging, use `tokentray run --foreground` to keep it attached to the terminal.
 
 ## Alerts and polling
 

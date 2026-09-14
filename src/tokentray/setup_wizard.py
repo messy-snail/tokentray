@@ -76,9 +76,9 @@ def run(config: Config, store: SecretStore | None = None, *, launch: bool = True
     typer.echo("  check    tokentray status")
 
     if launch and typer.confirm(i18n.t("connect.start"), default=True):
-        from .app import main as gui_main
+        from .launcher import start
 
-        return gui_main(autostart_launch=False)
+        return start()
     return 0
 
 
