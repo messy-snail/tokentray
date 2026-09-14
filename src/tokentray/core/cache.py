@@ -8,8 +8,9 @@ as fields keeps the two questions separate and makes the tests readable.
 
 from __future__ import annotations
 
+import math
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,10 @@ class CacheEntry:
     fetched_at: float       # when the body was last successfully retrieved
     backoff_until: float    # do not hit the network again before this
     note: str = ""          # why the last attempt failed, if it did
+    last_attempt: float = 0.0
+    rate_limit_until: float = 0.0
+    rate_limit_count: int = 0
+    failure_kind: str = ""
 
     def age(self, now: float | None = None) -> float:
         return max(0.0, (now if now is not None else time.time()) - self.fetched_at)
@@ -54,14 +59,20 @@ class Cache:
             fetched_at=_as_float(raw.get("fetched_at")),
             backoff_until=_as_float(raw.get("backoff_until")),
             note=str(raw.get("note") or ""),
+            last_attempt=_as_float(raw.get("last_attempt")),
+            rate_limit_until=_as_float(raw.get("rate_limit_until")),
+            rate_limit_count=max(0, int(_as_float(raw.get("rate_limit_count")))),
+            failure_kind=str(raw.get("failure_kind") or ""),
         )
 
     def store(self, provider_id: str, body: dict[str, Any], now: float | None = None) -> CacheEntry:
+        previous = self.load(provider_id)
         entry = CacheEntry(
             body=body,
             fetched_at=now if now is not None else time.time(),
             backoff_until=0.0,
             note="",
+            last_attempt=previous.last_attempt if previous else 0.0,
         )
         self._write(provider_id, entry)
         return entry
@@ -72,6 +83,9 @@ class Cache:
         ttl: float,
         note: str,
         now: float | None = None,
+        *,
+        failure_kind: str = "",
+        rate_limit_until: float = 0.0,
     ) -> CacheEntry | None:
         """Record a failed attempt and hold off retrying for ``ttl`` seconds.
 
@@ -85,8 +99,17 @@ class Cache:
         else:
             entry.backoff_until = now + ttl
             entry.note = note
+        entry.failure_kind = failure_kind
+        if rate_limit_until:
+            entry.rate_limit_until = rate_limit_until
+            entry.rate_limit_count += 1
         self._write(provider_id, entry)
         return entry if entry.body else None
+
+    def mark_attempt(self, provider_id: str, now: float) -> None:
+        entry = self.load(provider_id) or CacheEntry({}, 0.0, 0.0)
+        entry.last_attempt = now
+        self._write(provider_id, entry)
 
     def clear(self, provider_id: str) -> None:
         self._path(provider_id).unlink(missing_ok=True)
@@ -94,18 +117,14 @@ class Cache:
     def _write(self, provider_id: str, entry: CacheEntry) -> None:
         paths.atomic_write_json(
             self._path(provider_id),
-            {
-                "body": entry.body,
-                "fetched_at": entry.fetched_at,
-                "backoff_until": entry.backoff_until,
-                "note": entry.note,
-            },
+            asdict(entry),
             private=True,
         )
 
 
 def _as_float(value: Any) -> float:
     try:
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) else 0.0
     except (TypeError, ValueError):
         return 0.0

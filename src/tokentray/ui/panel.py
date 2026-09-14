@@ -162,22 +162,25 @@ class DetailPanel(QWidget):
                 content_layout.addWidget(_separator(self.content, palette))
             content_layout.addLayout(self._provider_block(view, self.content, palette))
 
-        footer = QHBoxLayout()
-        self._refresh_status = QLabel(card)
+        footer = QVBoxLayout()
+        self._refresh_status = WrappingLabel("", card)
         self._refresh_status.setObjectName("refresh-status")
+        self._refresh_status.setTextFormat(Qt.TextFormat.PlainText)
         footer.addWidget(self._refresh_status)
-        footer.addStretch(1)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
         refresh = QPushButton(t("menu.refresh"), card)
         refresh.setObjectName("panel-refresh")
         refresh.setCursor(Qt.CursorShape.PointingHandCursor)
         self._refresh_button = refresh
-        self._update_refresh_button()
         refresh.clicked.connect(self._refresh_clicked)
-        footer.addWidget(refresh)
+        buttons.addWidget(refresh)
+        footer.addLayout(buttons)
         body.addLayout(footer)
         self._footer = footer
 
         self.setFixedWidth(PANEL_WIDTH + SHADOW_MARGIN * 2)
+        self._update_refresh_button()
 
     def _fit_to_area(self, area: QRect) -> None:
         self.ensurePolished()
@@ -191,7 +194,7 @@ class DetailPanel(QWidget):
             # Nested usage grids need the conservative hint; simple login cards
             # can use their actual wrapped height without a large empty footer gap.
             natural = max(natural, layout.sizeHint().height())
-        footer_height = self._footer.sizeHint().height()
+        footer_height = max(self._footer.sizeHint().height(), self._footer.totalHeightForWidth(width))
         height = natural + footer_height + 10 + 30 + SHADOW_MARGIN * 2
         self.setFixedHeight(min(height, area.height()))
         self.layout().activate()
@@ -294,9 +297,16 @@ class DetailPanel(QWidget):
         button.setFixedWidth(metrics.horizontalAdvance(t("menu.refresh")) + 28)
         result = feedback.state in ("done", "failed")
         self._refresh_status.setText(feedback.text if result else "")
+        self._refresh_status.setVisible(result)
         color = theme.current().tier("green" if feedback.state == "done" else "orange")
         self._refresh_status.setStyleSheet(f"color: {color.name()}; font-size: 12px;")
         self._update_overlay()
+        if self.isVisible() and hasattr(self, "_footer"):
+            screen = self.screen()
+            if screen:
+                self._fit_to_area(screen.availableGeometry())
+                area = screen.availableGeometry()
+                self.move(self.x(), max(area.top(), min(self.y(), area.bottom() - self.height())))
 
     def _update_overlay(self) -> None:
         self.loading_overlay.setGeometry(self.rect().adjusted(

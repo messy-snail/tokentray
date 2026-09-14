@@ -1,6 +1,20 @@
 """Localized connection and onboarding copy."""
 
 EN = {
+    "refresh.no_providers": "No connected services to refresh",
+    "refresh.provider_done": "{provider} updated",
+    "refresh.provider_failed": "{provider} refresh failed: {reason}",
+    "refresh.provider_waiting": "{provider} rate limited: waiting to retry",
+    "refresh.provider_retained": "{provider}: recent data retained",
+    "refresh.reason_limited": "request rate limit",
+    "refresh.reason_connection": "connection failed",
+    "refresh.reason_expired": "login expired",
+    "refresh.reason_unreadable": "credentials unreadable",
+    "refresh.reason_schema": "API response changed",
+    "refresh.reason_error": "API error",
+    "refresh.timestamp": "{month:02d}/{day:02d} {hour:02d}:{minute:02d}",
+    "refresh.retry_at": "Rate limited · retry after {time}",
+    "refresh.last_update": "Last updated: {time}",
     "refresh.busy": "Refreshing", "refresh.done": "Updated", "refresh.failed": "Refresh failed",
     "connect.title": "Get started with TokenTray",
     "connect.intro": "Install and sign in to the CLI for the service you use.\nConnecting either service is enough.",
@@ -34,6 +48,20 @@ EN = {
 }
 
 KO = {
+    "refresh.no_providers": "갱신할 연결된 서비스가 없어요",
+    "refresh.provider_done": "{provider} 갱신 완료",
+    "refresh.provider_failed": "{provider} 갱신 실패: {reason}",
+    "refresh.provider_waiting": "{provider} 요청 제한: 재시도 대기 중",
+    "refresh.provider_retained": "{provider}: 최근 데이터 유지",
+    "refresh.reason_limited": "요청 제한",
+    "refresh.reason_connection": "연결 실패",
+    "refresh.reason_expired": "로그인 만료",
+    "refresh.reason_unreadable": "인증 정보 읽기 실패",
+    "refresh.reason_schema": "API 응답 변경",
+    "refresh.reason_error": "API 오류",
+    "refresh.timestamp": "{month}월 {day}일 {hour:02d}시 {minute:02d}분",
+    "refresh.retry_at": "요청 제한 · {time} 이후 재시도",
+    "refresh.last_update": "마지막 갱신: {time}",
     "refresh.busy": "갱신 중", "refresh.done": "갱신 완료", "refresh.failed": "갱신 실패",
     "connect.title": "TokenTray 시작하기",
     "connect.intro": "사용할 서비스의 CLI를 설치하고 로그인해 주세요.\n둘 중 하나만 연결해도 사용할 수 있어요.",

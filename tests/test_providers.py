@@ -203,8 +203,8 @@ class TestCacheAndBackoff:
     def test_force_bypasses_the_cache(self, claude):
         with respx.mock:
             route = respx.get(CLAUDE_URL).mock(return_value=httpx.Response(200, json=CLAUDE_BODY))
-            claude.fetch()
-            claude.fetch(force=True)
+            claude.fetch(now=1000)
+            claude.fetch(force=True, now=1030)
             assert route.call_count == 2
 
     def test_failure_falls_back_to_stale_data(self, claude):

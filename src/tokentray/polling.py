@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 from .core.cache import Cache
 from .core.config import Config
 from .core.models import Snapshot, Status
+from .core.refresh import RefreshResult
 
 log = logging.getLogger("tokentray")
 
@@ -17,7 +18,7 @@ class PollWorker(QObject):
     """Fetches every provider, one poll at a time, off the UI thread."""
 
     snapshots_ready = Signal(list)
-    refresh_finished = Signal(bool)
+    refresh_finished = Signal(object)
     requested = Signal(bool)
     test_requested = Signal()
     test_finished = Signal(object)
@@ -42,21 +43,17 @@ class PollWorker(QObject):
         self._busy = True
         try:
             while True:
-                snapshots = [p.fetch(force=force) for p in self._providers]
+                snapshots = self._fetch_all(force=force)
                 self.snapshots_ready.emit(snapshots)
                 if force:
-                    # A service nobody signed in to is a choice, not a failed
-                    # refresh - someone using only Claude would otherwise read
-                    # "Refresh failed" every time.
-                    signed_in = [s for s in snapshots if s.status != Status.NOT_CONFIGURED]
-                    self.refresh_finished.emit(bool(signed_in) and all(s.status == Status.OK for s in signed_in))
+                    self.refresh_finished.emit(RefreshResult.from_snapshots(snapshots))
                 if self._pending is None:
                     return
                 force, self._pending = self._pending, None
         except Exception:
             log.exception("poll failed")
             if force:
-                self.refresh_finished.emit(False)
+                self.refresh_finished.emit(RefreshResult(()))
         finally:
             self._busy = False
 
@@ -65,18 +62,23 @@ class PollWorker(QObject):
         """Runs on the same worker thread, after any in-flight regular poll."""
         snapshots: list[Snapshot] | None = None
         try:
-            snapshots = []
-            for provider in self._providers:
-                try:
-                    snapshots.append(provider.fetch(force=True))
-                except Exception:
-                    log.exception("notification test fetch failed: %s", provider.id)
-                    snapshots.append(Snapshot(provider=provider.id, status=Status.ERROR))
+            snapshots = self._fetch_all(force=True)
         except Exception:
             log.exception("notification test failed")
             snapshots = None
         finally:
             self.test_finished.emit(snapshots)
+
+    def _fetch_all(self, *, force: bool) -> list[Snapshot]:
+        snapshots = []
+        for provider in self._providers:
+            try:
+                snapshots.append(provider.fetch(force=force))
+            except Exception as exc:
+                # Exception messages can contain request credentials.
+                log.warning("provider=%s unexpected_failure exception=%s", provider.id, type(exc).__name__)
+                snapshots.append(Snapshot(provider=provider.id, status=Status.ERROR, failure_kind="error"))
+        return snapshots
 
     @Slot()
     def shutdown(self) -> None:

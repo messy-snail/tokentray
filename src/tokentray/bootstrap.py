@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import logging.handlers
 import os
+import platform
 import sys
 
 from PySide6.QtCore import QLocale, QUrl
@@ -69,3 +70,9 @@ def configure_logging() -> None:
     root = logging.getLogger("tokentray")
     root.setLevel(logging.INFO)
     root.handlers = [handler]
+    from . import __version__
+
+    root.info(
+        "startup version=%s platform=%s python=%s standalone=%s",
+        __version__, sys.platform, platform.python_version(), bool(getattr(sys, "frozen", False)),
+    )

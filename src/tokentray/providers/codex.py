@@ -85,7 +85,7 @@ class CodexProvider(BaseProvider):
         if response.status_code == 401:
             raise ProviderError(Status.EXPIRED, "HTTP 401")
         if response.status_code == 429:
-            raise ProviderError(Status.RATE_LIMITED, "HTTP 429")
+            raise ProviderError(Status.RATE_LIMITED, "HTTP 429", retry_after=response.headers.get("retry-after"))
         raise ProviderError(Status.ERROR, f"HTTP {response.status_code}")
 
     def _get_usage(self, token: str, account_id: str | None) -> Any:
@@ -120,6 +120,8 @@ class CodexProvider(BaseProvider):
             },
             headers={"Content-Type": "application/json"},
         )
+        if response.status_code == 429:
+            raise ProviderError(Status.RATE_LIMITED, "HTTP 429", retry_after=response.headers.get("retry-after"))
         if response.status_code != 200:
             return None
         try:

@@ -89,7 +89,11 @@ def verify_refresh(screens, output: Path) -> None:
 
         def complete() -> None:
             panel.update_views(updated)
-            panel.refresh_feedback.finish(True)
+            from tokentray.core.refresh import RefreshResult
+
+            panel.refresh_feedback.finish(RefreshResult.from_snapshots([
+                Snapshot(provider="claude", status=Status.OK), Snapshot(provider="codex", status=Status.OK),
+            ]))
             completed.append(True)
 
         def request() -> None:

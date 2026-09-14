@@ -105,7 +105,7 @@ class ClaudeProvider(BaseProvider):
         if response.status_code == 401:
             raise ProviderError(Status.UNAUTHORIZED, "HTTP 401")
         if response.status_code == 429:
-            raise ProviderError(Status.RATE_LIMITED, "HTTP 429")
+            raise ProviderError(Status.RATE_LIMITED, "HTTP 429", retry_after=response.headers.get("retry-after"))
         raise ProviderError(Status.ERROR, f"HTTP {response.status_code}")
 
     # -- parsing ---------------------------------------------------------------

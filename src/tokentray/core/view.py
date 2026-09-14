@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 from . import compute, i18n
 from .models import Snapshot, Status, UsageWindow
+from .refresh import local_timestamp
 
 PROVIDER_NAMES = {"claude": "Claude Code", "codex": "Codex"}
 PROVIDER_ABBR = {"claude": "CC", "codex": "CX"}
@@ -212,6 +213,11 @@ def _notes(snapshot: Snapshot) -> list[str]:
 def status_message(snapshot: Snapshot) -> str:
     """One line explaining a non-OK status, in the user's language."""
     provider = snapshot.provider
+    if snapshot.failure_kind == "rate_limited" and snapshot.retry_at > 0:
+        message = i18n.t("refresh.retry_at", time=local_timestamp(snapshot.retry_at))
+        if snapshot.has_data and snapshot.fetched_at > 0:
+            message += "\n" + i18n.t("refresh.last_update", time=local_timestamp(snapshot.fetched_at))
+        return message
     mapping = {
         Status.NOT_CONFIGURED: f"status.not_configured_{provider}",
         Status.EXPIRED: f"status.expired_{provider}",

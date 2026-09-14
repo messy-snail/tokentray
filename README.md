@@ -155,9 +155,39 @@ Changes reach the running app straight away, except `poll_interval` and
 `language`, which apply after a restart. `tokentray config path` shows where the
 config file lives.
 
+> [!NOTE]
+> **Usage lookups may be temporarily rate limited.**
+> When HTTP 429 occurs, TokenTray shows the last available reading and retries
+> automatically after waiting. This response alone does not mean account suspension
+> or exhausted conversation usage. Manual refresh does not bypass the wait.
+
+<details>
+<summary><b>Troubleshooting refresh failures</b></summary>
+
+Refresh results name each service and its reason, for example **Claude refresh
+failed: request rate limit** while Codex remains updated.
+
+TokenTray keeps the last available reading and waits at least as long as the
+server's `Retry-After` and your polling interval. If the server provides no valid
+wait time, repeated 429s back off for 5, 10, 20, 40, then 60 minutes, never less
+than your configured interval. Successful lookup resets this backoff. The
+displayed retry time is the earliest retry time, not a promise of recovery.
+Restarting, manual refresh, login recheck, and notification tests do not bypass
+the wait. Requests also have a 30-second minimum spacing; rapid refreshes retain
+recent data instead of making another request.
+
+`poll_interval` controls normal polling. Throttling can make actual intervals
+longer without changing your setting. No officially guaranteed polling interval
+has been confirmed for `/api/oauth/usage`; 2 or 5 minutes is not a server
+guarantee. TokenTray cannot control requests from Claude Code, other tools, or
+other devices. For troubleshooting, use **Open log** in the tray menu; network
+diagnostics omit tokens, raw headers, and response bodies.
+
+</details>
+
 > [!TIP]
 > Need some quiet? Choose **Pause alerts for 1 hour** in the tray menu. **Test
-> notification** previews the alert cards with fresh data.
+> notification** previews the alert cards, using cached data while requests are limited.
 
 <details>
 <summary><b>More settings and webhooks</b></summary>

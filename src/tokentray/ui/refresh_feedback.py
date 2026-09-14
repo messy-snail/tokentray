@@ -7,9 +7,10 @@ import time
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
 from ..core.i18n import t
+from ..core.refresh import RefreshResult
 
 MIN_BUSY_MS = 600
-RESULT_MS = 1800
+RESULT_MS = 5000
 
 
 class RefreshFeedback(QObject):
@@ -19,7 +20,7 @@ class RefreshFeedback(QObject):
         super().__init__(parent)
         self.state = "idle"
         self._started = 0.0
-        self._success = False
+        self._result = RefreshResult(())
         self._completion = QTimer(self)
         self._completion.setSingleShot(True)
         self._completion.timeout.connect(self._show_result)
@@ -36,7 +37,7 @@ class RefreshFeedback(QObject):
         if self.busy:
             return t("refresh.busy")
         if self.state != "idle":
-            return t("refresh." + self.state)
+            return self._result.text
         return t("menu.refresh")
 
     def start(self) -> bool:
@@ -49,11 +50,11 @@ class RefreshFeedback(QObject):
         self.changed.emit()
         return True
 
-    @Slot(bool)
-    def finish(self, success: bool) -> None:
+    @Slot(object)
+    def finish(self, result: RefreshResult) -> None:
         if not self.busy:
             return
-        self._success = success
+        self._result = result
         elapsed = int((time.monotonic() - self._started) * 1000)
         self._completion.start(max(0, MIN_BUSY_MS - elapsed))
 
@@ -61,7 +62,7 @@ class RefreshFeedback(QObject):
     def _show_result(self) -> None:
         if not self.busy:
             return
-        self.state = "done" if self._success else "failed"
+        self.state = "done" if self._result.successful else "failed"
         self.changed.emit()
         self._reset.start(RESULT_MS)
 

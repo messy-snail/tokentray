@@ -87,6 +87,9 @@ class Snapshot:
     detail: str | None = None          # human-readable source/error note
     fetched_at: float = field(default_factory=time.time)
     window_reset_pending: bool = False  # stale data whose window already rolled over
+    failure_kind: str = ""
+    retry_at: float = 0.0
+    request_skipped: bool = False
 
     @property
     def has_data(self) -> bool:
