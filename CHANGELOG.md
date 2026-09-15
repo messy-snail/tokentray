@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.1 - 2026-09-15
+
+### Fixed
+- Respect request-limit waiting periods when refreshing usage, and report refresh
+  results per service so a failure in one does not hide another service's result.
+- Improve network diagnostics and distinguish waiting, cached data and failed
+  refreshes in the detail panel.
+- Launch the tray application independently of the terminal so closing the
+  terminal does not stop it.
+- Disable Windows' extra rectangular shadow around the transparent detail panel
+  and notification windows while keeping the cards' own soft shadows.
+
 ## 0.1.0 - 2026-09-14
 
 First release. A cross-platform reimplementation of
