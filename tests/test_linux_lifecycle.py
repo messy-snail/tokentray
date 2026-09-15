@@ -34,7 +34,9 @@ def test_stop_acknowledges_before_gui_exits():
         command = [sys.executable, "-c", "from tokentray.cli import main; main()"]
         with (root / "gui.log").open("w+") as output:
             process = subprocess.Popen(
-                [*command, "--autostart"], env=env, stdout=output, stderr=output
+                # Own the GUI process, not the detached launcher's readiness poll.
+                [*command, "run", "--foreground", "--autostart"],
+                env=env, stdout=output, stderr=output,
             )
             try:
                 socket = root / "runtime/tokentray/tokentray.sock"

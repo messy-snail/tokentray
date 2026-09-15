@@ -489,6 +489,7 @@ class TestIpcRoundTrip:
         finally:
             instance.release()
 
+    @pytest.mark.skipif(sys.platform != "win32", reason="Delay targets the Windows named-pipe reader")
     def test_a_client_slow_to_read_still_gets_the_reply(self, qapp, short_runtime, monkeypatch):
         """The server must not hang up before the client has read.
 
