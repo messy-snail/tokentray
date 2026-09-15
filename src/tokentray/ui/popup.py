@@ -6,6 +6,7 @@ controlled by ``notify.dispatcher``.
 
 from __future__ import annotations
 
+import sys
 from typing import Callable
 
 from PySide6.QtCore import (
@@ -105,6 +106,9 @@ class Toast(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.WindowDoesNotAcceptFocus
         )
+        if sys.platform == "win32":
+            # The card already draws its own shadow inside the transparent window.
+            self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         # Without this the toast steals focus from whatever the user is typing in.
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)

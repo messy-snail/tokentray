@@ -6,6 +6,7 @@ people already expect from a tray flyout, and it saves having to manage focus.
 
 from __future__ import annotations
 
+import sys
 from typing import Callable
 
 from PySide6.QtCore import QPoint, QRect, Qt
@@ -48,6 +49,9 @@ class DetailPanel(QWidget):
         self._views: list[ProviderView] = []
         self.recovery = None
         self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        if sys.platform == "win32":
+            # Keep the card shadow, not a second shadow around its transparent margins.
+            self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self._anchor: QRect | None = None
         self.loading_overlay = LoadingOverlay(self)
