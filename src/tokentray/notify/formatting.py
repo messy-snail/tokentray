@@ -53,6 +53,26 @@ def usage_preview_contents(views: list[ProviderView], *, disabled: set[str]) -> 
     return contents
 
 
+def usage_preview_events(views: list[ProviderView]) -> list[AlertEvent]:
+    """Build manual webhook previews without evaluating automatic alert state."""
+    events = []
+    for view in views:
+        previous = t("test.previous_data") if view.status in (Status.CACHED, Status.STALE) else ""
+        for row in view.rows if view.status.has_data else []:
+            events.append(AlertEvent(
+                kind="info", key="test.usage", title=t("test.title"),
+                body=f"{provider_name(view.provider)} · {row.label}: {row.detail_status or row.remaining_text}",
+                provider=view.provider, row=row, tier=row.tier, detail=previous,
+            ))
+        if not view.status.has_data or not view.rows:
+            events.append(AlertEvent(
+                kind="info", key="test.usage", title=t("test.title"),
+                body=f"{provider_name(view.provider)}: {view.message or t('status.no_data')}",
+                provider=view.provider,
+            ))
+    return events
+
+
 def summarize(events: list[AlertEvent]) -> AlertSummary:
     """Collapse a burst while preserving which provider raised each alert."""
     counts = Counter(event.provider for event in events if event.provider)

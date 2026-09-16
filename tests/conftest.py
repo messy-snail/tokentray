@@ -16,6 +16,16 @@ from tokentray.core.cache import Cache
 from tokentray.core.config import Config
 
 
+@pytest.fixture
+def webhook_payload():
+    """Decode outbound webhook JSON and reject accidental file attachments."""
+    def decode(request):
+        assert request.headers["content-type"].startswith("application/json")
+        return json.loads(request.content)
+
+    return decode
+
+
 @pytest.fixture(autouse=True)
 def isolate_environment(tmp_path, monkeypatch):
     """Keep every test off the developer's real credentials and config.

@@ -15,6 +15,7 @@ import httpx
 
 from ..core.alerts import AlertEvent
 from ..core.compute import TIER_COLORS
+from ..core.i18n import t
 from ..core.secrets import WEBHOOK_URL, SecretStore, default_store
 from .formatting import provider_name
 
@@ -271,16 +272,56 @@ def _slack_payload(event: AlertEvent) -> dict[str, Any]:
 
 def _discord_payload(event: AlertEvent) -> dict[str, Any]:
     color = int(TIER_COLORS.get(event.tier, TIER_COLORS["green"]).lstrip("#"), 16)
-    payload: dict[str, Any] = {
-        "username": "tokentray",
-        "allowed_mentions": {"parse": []},
-        "embeds": [
-            {"title": event.title[:256], "description": _message(event)[:4096], "color": color}
-        ],
-    }
+    title = event.title
+    description = _message(event)[:4096]
+    embed: dict[str, Any] = {"color": color}
     if event.provider:
-        payload["embeds"][0]["footer"] = {"text": provider_name(event.provider)}
-    return payload
+        embed["author"] = {"name": provider_name(event.provider)[:256]}
+        if event.kind == "info" and title == t("fmt.notify_title", provider=provider_name(event.provider)):
+            title = t("discord.status_title")
+    if event.key == "test.usage":
+        title = t("discord.usage_title")
+    elif event.kind in {"threshold", "reminder"}:
+        title = t(f"discord.{event.kind}_title")
+    if event.row is not None:
+        row = event.row
+        remaining = row.detail_status or row.remaining_text
+        marker = "ℹ️" if row.detail_status else {"green": "🟢", "orange": "🟠", "red": "🔴"}.get(row.tier, "ℹ️")
+        description = f"{row.label[:256]}\n**{marker} {remaining[:256]}**"
+        if event.detail:
+            description += f"\n\n{event.detail[:1024]}"
+        fields = []
+        # The view already includes the local reset time; keep it without
+        # repeating the label in both the field name and its value.
+        refills = next((item.value for item in row.details if item.key == "refills"), "")
+        refills = refills or row.refills.removeprefix(t("label.refills") + " ")
+        pace = row.pace.removeprefix(t("label.pace") + ": ")
+        for key, value in (("refills", refills), ("pace", pace)):
+            if value.strip():
+                icon = "🕒" if key == "refills" else "⚡"
+                fields.append({"name": f"{icon} {t(f'label.{key}')}", "value": value[:1024], "inline": True})
+        if fields:
+            embed["fields"] = fields
+    elif event.key == "test" and event.body == "Webhook notifications are working.":
+        title = t("discord.test_title")
+        description = t("discord.test_body")
+    embed.update(title=title[:256], description=description)
+    if event.row is not None:
+        summary = f"{marker} {provider_name(event.provider)} · {row.label} · {remaining}"
+        if event.kind == "reminder":
+            summary = f"{title} · {provider_name(event.provider)} · {row.label} · {row.refills or remaining}"
+        if event.detail:
+            summary += f" · {event.detail}"
+    else:
+        summary = " · ".join(part for part in (title, provider_name(event.provider) if event.provider else "",
+                                               description) if part)
+    summary = " ".join(summary.split())
+    return {
+        "username": "tokentray",
+        "content": summary if len(summary) <= 240 else summary[:239] + "…",
+        "allowed_mentions": {"parse": []},
+        "embeds": [embed],
+    }
 
 
 def _retry_after(response: httpx.Response) -> float:
@@ -299,7 +340,7 @@ def _retry_after(response: httpx.Response) -> float:
 def _ascii(text: str) -> str:
     """ntfy sends the title in an HTTP header, which cannot carry raw UTF-8."""
     try:
-        text.encode("latin-1")
+        text.encode("ascii")
         return text
     except UnicodeEncodeError:
         return json.dumps(text, ensure_ascii=True)[1:-1]

@@ -254,9 +254,7 @@ class TestWebhook:
         assert payload["blocks"][0]["text"]["text"] == "tokentray · Codex"
         assert "10%" in payload["text"]
 
-    def test_discord_uses_embed_and_disables_mentions(self):
-        import json
-
+    def test_discord_uses_embed_and_disables_mentions(self, webhook_payload):
         url = "https://discord.com/api/webhooks/123/secret"
         with respx.mock:
             route = respx.post(url).mock(return_value=httpx.Response(200, json={}))
@@ -268,10 +266,10 @@ class TestWebhook:
             )
         assert result.ok
         request = route.calls[0].request
-        payload = json.loads(request.content)
+        payload = webhook_payload(request)
         assert request.url.params["wait"] == "true"
         assert payload["allowed_mentions"] == {"parse": []}
-        assert payload["embeds"][0]["footer"]["text"] == "Claude Code"
+        assert payload["embeds"][0]["author"]["name"] == "Claude Code"
 
     def test_service_urls_are_validated(self):
         assert validate_destination("slack", "https://example.com/hook")

@@ -9,16 +9,15 @@ work directly. Qt is imported only on the paths that actually need it, so
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
 from typing import Optional
 
 import typer
 
 from . import __version__
 from .core import compute, i18n
-from .core.cache import Cache
 from .core.config import Config, parse_value
-from .core.view import ProviderView, build_view
+from .core.view import ProviderView
+from .notify.preview import collect_views as _collect_views
 
 app = typer.Typer(
     name="tokentray",
@@ -290,18 +289,40 @@ def webhook_setup(
 
 
 @webhook_app.command("test")
-def webhook_test() -> None:
-    """Send one test message to the configured destination."""
+def webhook_test(
+    usage: bool = typer.Option(False, "--usage", help="Fetch usage and send a card for each quota window."),
+) -> None:
+    """Send a connection test, or current usage cards, to the saved destination."""
     from .core.alerts import AlertEvent
+    from .notify.preview import send_usage_preview
     from .notify.webhook import Webhook
 
-    hook = Webhook.from_config(Config.load())
-    result = hook.deliver(
+    config = Config.load()
+    i18n.set_language(config.language)
+    hook = Webhook.from_config(config)
+    events = [
         AlertEvent(kind="info", key="test", title="tokentray", body="Webhook notifications are working.")
-    )
-    if not result.ok:
-        typer.secho(f"delivery failed: {result.error}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(1)
+    ]
+    if usage:
+        if not (config.get("webhook.configured", False) or config.get("webhook.url", "")):
+            typer.secho("Configure a webhook destination first.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(1)
+        preview = send_usage_preview(config, hook)
+        if preview.empty:
+            typer.secho("No enabled providers to preview.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(1)
+        if preview.error:
+            typer.secho(
+                f"delivery failed after {preview.sent} cards: {preview.error}", fg=typer.colors.RED, err=True,
+            )
+            raise typer.Exit(1)
+        typer.echo(f"usage preview sent ({preview.sent} cards)")
+        return
+    for event in events:
+        result = hook.deliver(event)
+        if not result.ok:
+            typer.secho(f"delivery failed: {result.error}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(1)
     typer.echo("test notification sent")
 
 
@@ -355,20 +376,6 @@ def _reload_running_config() -> None:
     from . import ipc
 
     ipc.send_command(ipc.CMD_RELOAD_CONFIG)
-
-
-def _collect_views(config: Config, *, force: bool) -> list[ProviderView]:
-    from .providers import build_providers
-
-    now = datetime.now(timezone.utc)
-    views: list[ProviderView] = []
-    for provider in build_providers(config, Cache()):
-        try:
-            snapshot = provider.fetch(force=force)
-        finally:
-            provider.close()
-        views.append(build_view(snapshot, now))
-    return views
 
 
 def _format_status(views: list[ProviderView]) -> list[str]:

@@ -71,6 +71,13 @@ def test_all_services_fit_scrolling_body(qapp, tmp_path, monkeypatch, language, 
             assert bottom <= d.scroll.viewport().height()
             assert d.test_button.geometry().bottom() < d.height()
             assert d.test_button.y() >= d.scroll.geometry().bottom()
+            assert d.usage_button.y() == d.test_button.y()
+            assert d.test_button.geometry().right() < d.usage_button.x()
+            assert d.usage_button.geometry().right() < d.width()
+            assert d.buttons.y() > d.usage_button.geometry().bottom()
+            assert d.buttons.geometry().bottom() < d.height()
+            for button in (d.test_button, d.usage_button):
+                assert button.fontMetrics().horizontalAdvance(button.text()) + 24 <= button.width()
     d.close()
 
 

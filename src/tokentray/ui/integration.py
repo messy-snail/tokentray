@@ -6,7 +6,7 @@ import re
 import threading
 from typing import Callable
 
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import QObject, Qt, Signal, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -27,6 +27,7 @@ from ..core.config import Config
 from ..core.i18n import t
 from ..core.secrets import SecretStore, default_store
 from ..notify.configuration import DestinationSettings, current_settings, save_destination
+from ..notify.preview import PreviewResult, send_usage_preview
 from ..notify.webhook import (
     DeliveryResult,
     Webhook,
@@ -42,6 +43,13 @@ _DOCS = {
     "discord": "https://support.discord.com/hc/articles/228383668",
     "ntfy": "https://docs.ntfy.sh/publish/",
 }
+
+
+class _OperationSignals(QObject):
+    """Kept alive by the worker; Qt disconnects slots when the dialog is deleted."""
+
+    finished = Signal(str, object)
+    progress = Signal(str)
 
 
 class IntegrationDialog(QDialog):
@@ -61,6 +69,10 @@ class IntegrationDialog(QDialog):
         self._on_saved = on_saved
         self._initial = current_settings(config)
         self._test_webhook: Webhook | None = None
+        self._busy = False
+        self._signals = _OperationSignals()
+        self._signals.finished.connect(self._operation_done)
+        self._signals.progress.connect(self._usage_progress)
 
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
         self.setWindowTitle(t("integration.title"))
@@ -184,7 +196,12 @@ class IntegrationDialog(QDialog):
         self.test_button.setObjectName("webhook-test")
         self.test_button.clicked.connect(self._test)
         controls.addWidget(self.test_button)
+        self.usage_button = QPushButton(t("integration.usage"), self)
+        self.usage_button.setObjectName("webhook-usage")
+        self.usage_button.clicked.connect(self._send_usage)
+        controls.addWidget(self.usage_button)
         controls.addStretch(1)
+        root.addLayout(controls)
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
@@ -193,8 +210,7 @@ class IntegrationDialog(QDialog):
         self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("integration.cancel"))
         self.buttons.accepted.connect(self._save)
         self.buttons.rejected.connect(self.reject)
-        controls.addWidget(self.buttons)
-        root.addLayout(controls)
+        root.addWidget(self.buttons)
 
         self.kind.currentIndexChanged.connect(self._kind_changed)
         self.operation_finished.connect(self._operation_done)
@@ -249,6 +265,14 @@ class IntegrationDialog(QDialog):
         self.url_shape.setVisible(bool(shape))
 
     def _test(self) -> None:
+        self._start_test(usage=False)
+
+    def _send_usage(self) -> None:
+        self._start_test(usage=True)
+
+    def _start_test(self, *, usage: bool) -> None:
+        if self._busy:
+            return
         kind = self._selected_kind()
         url = self.url.text().strip()
         if url:
@@ -261,7 +285,7 @@ class IntegrationDialog(QDialog):
             return
 
         self._set_busy(True)
-        self._set_status(t("integration.testing"))
+        self._set_status(t("integration.usage_fetching" if usage else "integration.testing"))
         hook = Webhook(
             enabled=True,
             kind=kind,
@@ -270,25 +294,42 @@ class IntegrationDialog(QDialog):
             configured=True,
         )
         self._test_webhook = hook
-        hook.test(lambda result: self.operation_finished.emit("test", result))
+        signals = self._signals
+        if usage:
+            config = Config(self._config.as_dict())
+
+            def work() -> None:
+                result = send_usage_preview(config, hook, progress=signals.progress.emit)
+                signals.finished.emit("usage", result)
+
+            threading.Thread(target=work, name="tokentray-webhook-preview", daemon=True).start()
+        else:
+            hook.test(lambda result: signals.finished.emit("test", result))
+
+    @Slot(str)
+    def _usage_progress(self, stage: str) -> None:
+        self._set_status(t(f"integration.usage_{stage}"))
 
     def _save(self) -> None:
+        if self._busy:
+            return
         self._set_busy(True)
         self._set_status(t("integration.saving"))
         values = (self.enabled.isChecked(), self._selected_kind(), self.url.text())
+        config, store, signals = self._config, self._store, self._signals
 
         def work() -> None:
             try:
                 result: object = save_destination(
-                    self._config,
+                    config,
                     enabled=values[0],
                     kind=values[1],
                     url=values[2],
-                    store=self._store,
+                    store=store,
                 )
             except Exception as exc:
                 result = exc
-            self.operation_finished.emit("save", result)
+            signals.finished.emit("save", result)
 
         threading.Thread(target=work, name="tokentray-webhook-save", daemon=True).start()
 
@@ -297,6 +338,14 @@ class IntegrationDialog(QDialog):
         self._set_busy(False)
         if isinstance(result, Exception):
             self._show_error(str(result))
+            return
+        if operation == "usage" and isinstance(result, PreviewResult):
+            if result.empty:
+                self._set_status(t("integration.usage_empty"))
+            elif result.error:
+                self._show_error(t("integration.usage_failed", n=result.sent, reason=result.error))
+            else:
+                self._set_status(t("integration.usage_ok", n=result.sent))
             return
         if operation == "test":
             delivery = result
@@ -311,7 +360,9 @@ class IntegrationDialog(QDialog):
             self.accept()
 
     def _set_busy(self, busy: bool) -> None:
+        self._busy = busy
         self.test_button.setEnabled(not busy)
+        self.usage_button.setEnabled(not busy)
         self.buttons.setEnabled(not busy)
         self.enabled.setEnabled(not busy)
         self.kind.setEnabled(not busy)
