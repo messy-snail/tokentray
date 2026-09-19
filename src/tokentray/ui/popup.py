@@ -43,6 +43,8 @@ SHADOW_MARGIN = 40
 GAP = 10
 EDGE_MARGIN = 16
 MAX_VISIBLE = 3
+# How often an expired card re-checks a pointer that is still resting on it.
+HOVER_POLL_MS = 250
 
 
 class _Meter(QWidget):
@@ -122,8 +124,9 @@ class Toast(QWidget):
 
         self._dismiss = QTimer(self)
         self._dismiss.setSingleShot(True)
-        self._dismiss.timeout.connect(self.dismiss)
+        self._dismiss.timeout.connect(self._expire)
         self._duration_ms = max(2, duration) * 1000
+        self._held = False
 
         self._fade = QPropertyAnimation(self, b"windowOpacity", self)
         self._slide = QPropertyAnimation(self, b"pos", self)
@@ -317,8 +320,24 @@ class Toast(QWidget):
         # the card counted as leaving and restarted the countdown - the hover
         # never held. Only a pointer that is really off the card ends the wait.
         if not self._sticky and not self.hovered():
+            self._held = False
             self._dismiss.start(self._duration_ms)
         super().leaveEvent(event)
+
+    def _expire(self) -> None:
+        # macOS sends no Enter or Leave to the windows of an app that is not
+        # frontmost - and a card nearly always appears while another app is -
+        # so the countdown ran out under a resting cursor. Ask where the
+        # pointer is instead: hold while it is on the card, then give the full
+        # wait again once it leaves, as leaveEvent does.
+        if self.hovered():
+            self._held = True
+            self._dismiss.start(HOVER_POLL_MS)
+        elif self._held:
+            self._held = False
+            self._dismiss.start(self._duration_ms)
+        else:
+            self.dismiss()
 
     def hovered(self) -> bool:
         """Whether the pointer is over the visible card, children included."""

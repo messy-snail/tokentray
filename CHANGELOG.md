@@ -12,6 +12,9 @@
 - ntfy titles in Korean, or with the `·` separator, arrived as literal
   `알…` escapes. The title, priority and tags now travel as query
   parameters, which carry UTF-8, and a query already in the topic URL is kept.
+- On macOS a card still vanished under a resting cursor while another app was
+  frontmost, because macOS sends no hover events to an inactive app. The card
+  now checks the pointer itself when its time runs out.
 
 ## 0.1.1 - 2026-09-15
 
