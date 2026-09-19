@@ -82,6 +82,8 @@ class Toast(QWidget):
 
     closed = Signal(object)
     activated = Signal()
+    # A click on the transparent shadow margin, in global coordinates.
+    passthrough = Signal(QPoint)
 
     def __init__(
         self,
@@ -341,12 +343,30 @@ class Toast(QWidget):
 
     def hovered(self) -> bool:
         """Whether the pointer is over the visible card, children included."""
-        return self._card.geometry().contains(self.mapFromGlobal(QCursor.pos()))
+        return self.card_contains(QCursor.pos())
+
+    def card_contains(self, global_pos: QPoint) -> bool:
+        return self._card.geometry().contains(self.mapFromGlobal(global_pos))
+
+    def click_at(self, global_pos: QPoint) -> None:
+        """Act on a click another toast's margin caught over this card."""
+        target = self.childAt(self.mapFromGlobal(global_pos))
+        if isinstance(target, QPushButton):
+            target.click()
+        else:
+            self.activated.emit()
+            self.dismiss()
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt naming
         if event.button() == Qt.MouseButton.LeftButton:
-            self.activated.emit()
-            self.dismiss()
+            if self._card.geometry().contains(event.position().toPoint()):
+                self.activated.emit()
+                self.dismiss()
+            else:
+                # The shadow margin is transparent but still this window, and
+                # in a stack it lies over the neighbouring card - bottom-up,
+                # right over its x. Hand the click to whichever card is there.
+                self.passthrough.emit(event.globalPosition().toPoint())
         super().mouseReleaseEvent(event)
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt naming
@@ -427,6 +447,7 @@ class ToastManager:
 
     def show(self, toast: Toast) -> None:
         toast.closed.connect(self._forget)
+        toast.passthrough.connect(self._route_click)
         if self.on_activated is not None:
             toast.activated.connect(self.on_activated)
         self._toasts.append(toast)
@@ -484,6 +505,12 @@ class ToastManager:
         else:
             y = area.bottom() - toast.height() + SHADOW_MARGIN - EDGE_MARGIN - offset
         return QPoint(x, y)
+
+    def _route_click(self, global_pos: QPoint) -> None:
+        for toast in reversed(self._toasts):
+            if toast.card_contains(global_pos):
+                toast.click_at(global_pos)
+                return
 
     def _forget(self, toast: Toast) -> None:
         if toast in self._toasts:

@@ -15,6 +15,10 @@
 - On macOS a card still vanished under a resting cursor while another app was
   frontmost, because macOS sends no hover events to an inactive app. The card
   now checks the pointer itself when its time runs out.
+- With cards stacked from the bottom, pressing the lower card's × closed the
+  card above it and opened the panel: the upper card's transparent shadow
+  margin lay over the button. A click on a margin now goes to the card
+  underneath, and a click on bare margin does nothing.
 
 ## 0.1.1 - 2026-09-15
 
