@@ -226,8 +226,11 @@ class IntegrationDialog(QDialog):
         return str(self.kind.currentData())
 
     def _kind_changed(self) -> None:
+        # A URL typed for one service never belongs to another - not even to
+        # the saved one, where it would be kept and ntfy or generic accepts any
+        # https URL. An empty field there already means "keep the saved URL".
+        self.url.clear()
         if self._selected_kind() != self._initial.kind:
-            self.url.clear()
             self.url.setPlaceholderText("https://…")
         else:
             self.url.setPlaceholderText(

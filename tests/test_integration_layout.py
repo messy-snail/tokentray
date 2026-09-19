@@ -202,3 +202,19 @@ def test_widgets_inherit_hinting(qapp, tmp_path):
             label.ensurePolished()
             assert label.font().hintingPreference() == expected
         widget.close()
+
+
+def test_returning_to_the_saved_service_drops_the_typed_url(qapp, tmp_path, monkeypatch):
+    """A Slack URL typed and then abandoned for the saved ntfy was saved as ntfy's."""
+    store = SecretStore(tmp_path / "secrets.toml")
+    monkeypatch.setattr(store, "_keyring", lambda: None)
+    config = Config(
+        {"webhook": {"enabled": True, "kind": "ntfy", "configured": True}}, tmp_path / "config.toml"
+    )
+    d = IntegrationDialog(config, on_saved=lambda _: None, store=store)
+    d.kind.setCurrentIndex(d.kind.findData("slack"))
+    d.url.setText("https://hooks.slack.com/services/T/B/test")
+    d.kind.setCurrentIndex(d.kind.findData("ntfy"))
+    assert d.url.text() == ""
+    assert d.url.placeholderText() == i18n.t("integration.saved_url")
+    d.close()

@@ -19,6 +19,9 @@
   card above it and opened the panel: the upper card's transparent shadow
   margin lay over the button. A click on a margin now goes to the card
   underneath, and a click on bare margin does nothing.
+- In the integration settings, a URL typed for one service stayed in the field
+  after switching back to the saved service, and saving stored it there - a
+  Slack URL as the ntfy destination. Changing the service now always clears it.
 
 ## 0.1.1 - 2026-09-15
 
