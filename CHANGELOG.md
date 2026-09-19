@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Changed
+- Slack messages use the same card as Discord: a translated title, the
+  service, the window with a 🟢🟠🔴 status line, and refill time and pace as
+  fields. The connection test is translated too, instead of always English.
+  Mentions and markup in a message are escaped rather than acted on.
+
 ### Fixed
 - ntfy titles in Korean, or with the `·` separator, arrived as literal
   `알…` escapes. The title, priority and tags now travel as query

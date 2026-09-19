@@ -13,10 +13,8 @@ from urllib.parse import urlparse
 import httpx
 
 from ..core.alerts import AlertEvent
-from ..core.compute import TIER_COLORS
-from ..core.i18n import t
 from ..core.secrets import WEBHOOK_URL, SecretStore, default_store
-from .formatting import provider_name
+from .cards import TEST_BODY, build_card, discord_payload, plain_text, slack_payload
 
 TIMEOUT = 5.0
 MAX_RETRY_AFTER = 30.0
@@ -115,7 +113,7 @@ class Webhook:
             kind="info",
             key="test",
             title="tokentray",
-            body="Webhook notifications are working.",
+            body=TEST_BODY,
             tier="green",
         )
         self._enqueue(event, callback)
@@ -207,12 +205,12 @@ class Webhook:
                 "priority": NTFY_PRIORITY.get(event.priority, "default"),
                 "tags": "warning",
             })
-            return client.post(target, content=_message(event).encode("utf-8"))
+            return client.post(target, content=plain_text(event).encode("utf-8"))
         if kind == "slack":
-            return client.post(url, json=_slack_payload(event))
+            return client.post(url, json=slack_payload(build_card(event)))
         if kind == "discord":
-            return client.post(url, params={"wait": "true"}, json=_discord_payload(event))
-        return client.post(url, json={"text": f"{event.title}: {_message(event)}"})
+            return client.post(url, params={"wait": "true"}, json=discord_payload(build_card(event)))
+        return client.post(url, json={"text": f"{event.title}: {plain_text(event)}"})
 
 
 def validate_destination(kind: str, url: str) -> str:
@@ -251,78 +249,6 @@ def destination_hint(kind: str) -> str:
     and so has no shape to show.
     """
     return DESTINATION_HINTS.get(kind, "")
-
-
-def _message(event: AlertEvent) -> str:
-    detail = event.detail
-    if not detail and event.row is not None:
-        detail = " · ".join(part for part in (event.row.refills, event.row.pace) if part)
-    return f"{event.body}\n{detail}" if detail else event.body
-
-
-def _slack_payload(event: AlertEvent) -> dict[str, Any]:
-    message = _message(event)
-    return {
-        "text": f"{event.title}: {message}",
-        "blocks": [
-            {"type": "header", "text": {"type": "plain_text", "text": event.title[:150]}},
-            {"type": "section", "text": {"type": "mrkdwn", "text": message[:3000]}},
-        ],
-    }
-
-
-def _discord_payload(event: AlertEvent) -> dict[str, Any]:
-    color = int(TIER_COLORS.get(event.tier, TIER_COLORS["green"]).lstrip("#"), 16)
-    title = event.title
-    description = _message(event)[:4096]
-    embed: dict[str, Any] = {"color": color}
-    if event.provider:
-        embed["author"] = {"name": provider_name(event.provider)[:256]}
-        if event.kind == "info" and title == t("fmt.notify_title", provider=provider_name(event.provider)):
-            title = t("discord.status_title")
-    if event.key == "test.usage":
-        title = t("discord.usage_title")
-    elif event.kind in {"threshold", "reminder"}:
-        title = t(f"discord.{event.kind}_title")
-    if event.row is not None:
-        row = event.row
-        remaining = row.detail_status or row.remaining_text
-        marker = "ℹ️" if row.detail_status else {"green": "🟢", "orange": "🟠", "red": "🔴"}.get(row.tier, "ℹ️")
-        description = f"{row.label[:256]}\n**{marker} {remaining[:256]}**"
-        if event.detail:
-            description += f"\n\n{event.detail[:1024]}"
-        fields = []
-        # The view already includes the local reset time; keep it without
-        # repeating the label in both the field name and its value.
-        refills = next((item.value for item in row.details if item.key == "refills"), "")
-        refills = refills or row.refills.removeprefix(t("label.refills") + " ")
-        pace = row.pace.removeprefix(t("label.pace") + ": ")
-        for key, value in (("refills", refills), ("pace", pace)):
-            if value.strip():
-                icon = "🕒" if key == "refills" else "⚡"
-                fields.append({"name": f"{icon} {t(f'label.{key}')}", "value": value[:1024], "inline": True})
-        if fields:
-            embed["fields"] = fields
-    elif event.key == "test" and event.body == "Webhook notifications are working.":
-        title = t("discord.test_title")
-        description = t("discord.test_body")
-    embed.update(title=title[:256], description=description)
-    if event.row is not None:
-        summary = f"{marker} {provider_name(event.provider)} · {row.label} · {remaining}"
-        if event.kind == "reminder":
-            summary = f"{title} · {provider_name(event.provider)} · {row.label} · {row.refills or remaining}"
-        if event.detail:
-            summary += f" · {event.detail}"
-    else:
-        summary = " · ".join(part for part in (title, provider_name(event.provider) if event.provider else "",
-                                               description) if part)
-    summary = " ".join(summary.split())
-    return {
-        "username": "tokentray",
-        "content": summary if len(summary) <= 240 else summary[:239] + "…",
-        "allowed_mentions": {"parse": []},
-        "embeds": [embed],
-    }
 
 
 def _retry_after(response: httpx.Response) -> float:

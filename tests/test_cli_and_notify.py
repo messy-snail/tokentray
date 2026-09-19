@@ -258,7 +258,8 @@ class TestWebhook:
             )
         assert result.ok
         payload = json.loads(route.calls[0].request.content)
-        assert payload["blocks"][0]["text"]["text"] == "tokentray · Codex"
+        assert payload["blocks"][0]["text"]["text"] == "⚠️ Usage warning"
+        assert payload["blocks"][1]["elements"][0]["text"] == "Codex"
         assert "10%" in payload["text"]
 
     def test_discord_uses_embed_and_disables_mentions(self, webhook_payload):

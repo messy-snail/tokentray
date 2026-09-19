@@ -7,9 +7,18 @@ from tokentray.core.alerts import AlertState, evaluate
 from tokentray.core.compute import TIER_COLORS
 from tokentray.core.models import Snapshot, Status, UsageWindow
 from tokentray.core.view import build_view
-from tokentray.notify.webhook import Webhook, _discord_payload, _slack_payload
+from tokentray.notify.cards import build_card, discord_payload, slack_payload
+from tokentray.notify.webhook import Webhook
 
 NOW = datetime(2026, 9, 16, 12, tzinfo=timezone.utc)
+
+
+def _discord_payload(event):
+    return discord_payload(build_card(event))
+
+
+def _slack_payload(event):
+    return slack_payload(build_card(event))
 
 
 def usage_event(kind, language="en"):
@@ -39,7 +48,7 @@ def test_usage_card_separates_identity_usage_and_details(language, kind):
     payload = _discord_payload(event)
     embed = payload["embeds"][0]
     assert embed["author"] == {"name": "Claude Code"}
-    assert embed["title"] == i18n.t(f"discord.{kind}_title")
+    assert embed["title"] == i18n.t(f"card.{kind}_title")
     assert embed["description"] == f"{row.label}\n**🟠 {row.remaining_text}**"
     refills = next(item.value for item in row.details if item.key == "refills")
     assert embed["fields"] == [
@@ -54,7 +63,7 @@ def test_usage_card_separates_identity_usage_and_details(language, kind):
     if kind == "threshold":
         assert payload["content"] == f"🟠 Claude Code · {row.label} · {row.remaining_text}"
     else:
-        assert i18n.t("discord.reminder_title") in payload["content"]
+        assert i18n.t("card.reminder_title") in payload["content"]
         assert row.refills in payload["content"]
 
 
@@ -94,7 +103,7 @@ def test_connection_notice_preserves_actionable_message(language):
     event.detail = "@everyone <@123>"
     payload = _discord_payload(event)
     embed = payload["embeds"][0]
-    assert embed["title"] == i18n.t("discord.status_title")
+    assert embed["title"] == i18n.t("card.status_title")
     assert embed["author"] == {"name": "Codex"}
     assert embed["description"] == f"{event.body}\n{event.detail}"
     assert "fields" not in embed
@@ -104,7 +113,7 @@ def test_connection_notice_preserves_actionable_message(language):
 
 
 @pytest.mark.parametrize("language", ["en", "ko"])
-def test_webhook_test_is_localized_only_for_discord(language, monkeypatch):
+def test_webhook_test_is_localized(language, monkeypatch):
     i18n.set_language(language)
     events = []
     webhook = Webhook(enabled=False, kind="discord")
@@ -112,12 +121,15 @@ def test_webhook_test_is_localized_only_for_discord(language, monkeypatch):
     webhook.test(lambda result: None)
     event = events[0]
     embed = _discord_payload(event)["embeds"][0]
-    assert embed["title"] == i18n.t("discord.test_title")
-    assert embed["description"] == i18n.t("discord.test_body")
+    assert embed["title"] == i18n.t("card.test_title")
+    assert embed["description"] == i18n.t("card.test_body")
     assert "fields" not in embed
     assert "author" not in embed
-    assert _slack_payload(event)["text"] == "tokentray: Webhook notifications are working."
-    assert i18n.t("discord.test_body") in _discord_payload(event)["content"]
+    slack = _slack_payload(event)
+    assert slack["blocks"][0]["text"]["text"] == i18n.t("card.test_title")
+    assert slack["blocks"][1]["text"]["text"] == i18n.t("card.test_body")
+    assert i18n.t("card.test_body") in slack["text"]
+    assert i18n.t("card.test_body") in _discord_payload(event)["content"]
 
 
 @pytest.mark.parametrize("with_row", [False, True])
@@ -150,12 +162,14 @@ def test_long_messages_fit_discord_limits(with_row):
     assert total <= 6000
 
 
-def test_custom_detail_is_preserved_without_changing_slack():
+def test_custom_detail_is_preserved():
     event = usage_event("threshold")
     event.detail = "Additional context"
     embed = _discord_payload(event)["embeds"][0]
     assert embed["description"].endswith("\n\nAdditional context")
-    assert _slack_payload(event)["blocks"][1]["text"]["text"] == f"{event.body}\nAdditional context"
+    assert _slack_payload(event)["blocks"][-1] == {
+        "type": "context", "elements": [{"type": "mrkdwn", "text": "Additional context"}],
+    }
 
 
 @pytest.mark.parametrize("tier,marker", [("green", "🟢"), ("orange", "🟠"), ("red", "🔴")])
@@ -166,10 +180,10 @@ def test_remaining_marker_follows_row_status(tier, marker):
 
 
 @pytest.mark.parametrize("language", ["en", "ko"])
-def test_preview_has_current_usage_title_only_on_discord(language):
+def test_preview_has_current_usage_title(language):
     event = usage_event("threshold", language)
     event.kind = "info"
     event.key = "test.usage"
     event.title = i18n.t("test.title")
-    assert _discord_payload(event)["embeds"][0]["title"] == i18n.t("discord.usage_title")
-    assert _slack_payload(event)["blocks"][0]["text"]["text"] == event.title
+    assert _discord_payload(event)["embeds"][0]["title"] == i18n.t("card.usage_title")
+    assert _slack_payload(event)["blocks"][0]["text"]["text"] == i18n.t("card.usage_title")
