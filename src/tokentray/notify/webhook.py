@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import queue
 import threading
@@ -198,15 +197,17 @@ class Webhook:
         self, client: httpx.Client, kind: str, url: str, event: AlertEvent
     ) -> httpx.Response:
         if kind == "ntfy":
-            return client.post(
-                url,
-                content=_message(event).encode("utf-8"),
-                headers={
-                    "Title": _ascii(event.title),
-                    "Priority": NTFY_PRIORITY.get(event.priority, "default"),
-                    "Tags": "warning",
-                },
-            )
+            # ntfy takes every option as a query parameter too. Headers cannot
+            # carry raw UTF-8, and escaping it there reached phones as literal
+            # "\uc54c..." text; a URL-encoded query arrives as written. Merged
+            # into the URL because httpx's params= drops a query already there,
+            # such as a self-hosted server's ?auth=.
+            target = httpx.URL(url).copy_merge_params({
+                "title": event.title,
+                "priority": NTFY_PRIORITY.get(event.priority, "default"),
+                "tags": "warning",
+            })
+            return client.post(target, content=_message(event).encode("utf-8"))
         if kind == "slack":
             return client.post(url, json=_slack_payload(event))
         if kind == "discord":
@@ -335,12 +336,3 @@ def _retry_after(response: httpx.Response) -> float:
         return max(0.0, min(float(raw), MAX_RETRY_AFTER))
     except (TypeError, ValueError):
         return 0.0
-
-
-def _ascii(text: str) -> str:
-    """ntfy sends the title in an HTTP header, which cannot carry raw UTF-8."""
-    try:
-        text.encode("ascii")
-        return text
-    except UnicodeEncodeError:
-        return json.dumps(text, ensure_ascii=True)[1:-1]

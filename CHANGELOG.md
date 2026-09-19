@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- ntfy titles in Korean, or with the `·` separator, arrived as literal
+  `알…` escapes. The title, priority and tags now travel as query
+  parameters, which carry UTF-8, and a query already in the topic URL is kept.
+
 ## 0.1.1 - 2026-09-15
 
 ### Fixed

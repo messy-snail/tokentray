@@ -205,24 +205,31 @@ class TestWebhook:
                 time.sleep(0.02)
         assert route.called
         request = route.calls[0].request
-        assert request.headers["Priority"] == "urgent"
-        assert request.headers["Title"] == "Warning"
+        assert request.url.params["priority"] == "urgent"
+        assert request.url.params["title"] == "Warning"
+        assert request.content == b"10% left"
 
-    def test_non_latin1_title_is_escaped_for_the_header(self):
-        import time
-
+    def test_non_ascii_title_arrives_as_written(self):
+        # Escaping it for a header reached subscribers as literal "\uc0ac..." text.
         with respx.mock:
             route = respx.post("https://ntfy.sh/t").mock(return_value=httpx.Response(200))
-            Webhook(enabled=True, kind="ntfy", url="https://ntfy.sh/t").send(
-                AlertEvent(kind="threshold", key="k", title="사용량 경고", body="b")
+            result = Webhook(enabled=True, kind="ntfy", url="https://ntfy.sh/t").deliver(
+                AlertEvent(kind="threshold", key="k", title="tokentray · 사용량 경고", body="남은 양 10%")
             )
-            for _ in range(50):
-                if route.called:
-                    break
-                time.sleep(0.02)
-        # HTTP headers cannot carry raw UTF-8; sending it raw raises inside httpx.
-        assert route.called
-        route.calls[0].request.headers["Title"].encode("latin-1")
+        assert result.ok
+        request = route.calls[0].request
+        assert request.url.params["title"] == "tokentray · 사용량 경고"
+        assert "Title" not in request.headers
+        assert request.content.decode("utf-8") == "남은 양 10%"
+
+    def test_ntfy_keeps_query_already_in_the_url(self):
+        with respx.mock:
+            route = respx.post("https://ntfy.example.com/t").mock(return_value=httpx.Response(200))
+            Webhook(enabled=True, kind="ntfy", url="https://ntfy.example.com/t?auth=abc").deliver(
+                AlertEvent(kind="threshold", key="k", title="t", body="b")
+            )
+        params = route.calls[0].request.url.params
+        assert params["auth"] == "abc" and params["title"] == "t"
 
     def test_broken_endpoint_does_not_raise(self):
         with respx.mock:
