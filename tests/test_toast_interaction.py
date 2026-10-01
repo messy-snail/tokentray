@@ -133,3 +133,42 @@ class TestStackedClicks:
         self.release(upper, upper.mapToGlobal(upper._card.geometry().center()))
         assert self.dismissing(upper) and not self.dismissing(lower)
         assert activated == ["panel"]
+
+
+class TestDismissIsIdempotent:
+    """One gesture can ask a card to go twice.
+
+    An action button dismisses the card, and the release that pressed it also
+    reads as a click on the card. ``dismiss`` restarted the fade from wherever
+    it had got to and connected ``finished`` to ``close`` again each time, so a
+    card asked twice took longer to leave than one asked once.
+    """
+
+    def test_a_second_dismiss_does_not_restart_the_fade(self, qapp, monkeypatch):
+        card = popup.Toast(title="t", body="b", duration=8)
+        card.present(card.pos(), slide_from=0)
+        fades: list[float] = []
+        real = card._animate_opacity
+        monkeypatch.setattr(
+            card, "_animate_opacity", lambda value, ms: (fades.append(value), real(value, ms))
+        )
+
+        card.dismiss()
+        card.dismiss()
+
+        # One fade-out, so one ``finished``, so one ``close``.
+        assert fades == [0.0]
+        card.deleteLater()
+
+
+class TestShutdownTakesCardsOffScreen:
+    """``clear`` at quit cannot wait for a fade the event loop will outlive."""
+
+    def test_immediate_clear_closes_rather_than_fades(self, qapp):
+        manager = popup.ToastManager(duration=8)
+        manager.show(popup.Toast(title="t", body="b", duration=8))
+        assert manager._toasts
+
+        manager.clear(immediate=True)
+
+        assert manager._toasts == []

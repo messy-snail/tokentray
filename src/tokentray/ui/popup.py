@@ -132,6 +132,7 @@ class Toast(QWidget):
         self._dismiss.timeout.connect(self._expire)
         self._duration_ms = max(2, duration) * 1000
         self._held = False
+        self._closing = False
 
         self._fade = QPropertyAnimation(self, b"windowOpacity", self)
         self._slide = QPropertyAnimation(self, b"pos", self)
@@ -304,6 +305,14 @@ class Toast(QWidget):
         self._slide.start()
 
     def dismiss(self) -> None:
+        # A card can be asked to go twice - an action button dismisses, and the
+        # click that pressed it also reads as a card click. Without this the
+        # second ask restarted the fade from wherever it had reached and added
+        # another ``finished`` -> close connection, so a card asked twice took
+        # longer to leave than one asked once.
+        if self._closing:
+            return
+        self._closing = True
         self._dismiss.stop()
         self._fade.finished.connect(self.close)
         self._animate_opacity(0.0, 160)
@@ -460,9 +469,18 @@ class ToastManager:
             slide_from=max(24, toast.width() // 6),
         )
 
-    def clear(self) -> None:
+    def clear(self, *, immediate: bool = False) -> None:
+        """Take every card off screen.
+
+        ``immediate`` skips the fade. Shutdown needs it: ``dismiss`` only starts
+        a 160 ms animation, and the event loop stops long before it can finish,
+        so the close it was going to trigger never arrived.
+        """
         for toast in list(self._toasts):
-            toast.dismiss()
+            if immediate:
+                toast.close()
+            else:
+                toast.dismiss()
 
     # -- placement -------------------------------------------------------------
 

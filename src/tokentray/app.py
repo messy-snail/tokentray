@@ -210,7 +210,7 @@ class Controller(QObject):
     def _shutdown(self) -> None:
         self.recovery.close()
         self._timer.stop()
-        self.toasts.clear()
+        self.toasts.clear(immediate=True)
         self.webhook.close()
         self.tray.stop()
         # Close the HTTP clients on the thread that created them, then join.
