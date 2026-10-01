@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from PySide6.QtCore import QPoint, QRect, Qt
-from PySide6.QtGui import QFontMetrics, QGuiApplication
+from PySide6.QtCore import QPoint, QRect, QSize, Qt
+from PySide6.QtGui import QCursor, QFontMetrics, QGuiApplication
 from PySide6.QtWidgets import (
     QFrame,
     QGraphicsDropShadowEffect,
@@ -62,29 +62,30 @@ class DetailPanel(QWidget):
 
     def popup_at(self, anchor: QRect | None) -> None:
         """Show near the tray icon, kept inside the screen it belongs to."""
+        anchor = _anchor_or_pointer(anchor)
+        # Remember what was used, not what was asked for: a refresh re-shows
+        # through here, and it must not chase a pointer that has moved on.
         self._anchor = anchor
-        screen = None
-        if anchor is not None and not anchor.isNull():
-            screen = QGuiApplication.screenAt(anchor.center())
-        screen = screen or QGuiApplication.primaryScreen()
+        screen = QGuiApplication.screenAt(anchor.center()) or QGuiApplication.primaryScreen()
         area = screen.availableGeometry() if screen else QRect(0, 0, 1280, 800)
         self._rebuild()
         self._fit_to_area(area)
 
-        if anchor is not None and not anchor.isNull():
-            x = anchor.center().x() - self.width() // 2
-            below = anchor.bottom() + 4
-            # Put it above the icon when the tray sits at the bottom of the screen.
-            y = below if below + self.height() < area.bottom() else anchor.top() - self.height() - 4
-        else:
-            x = area.right() - self.width()
-            y = area.bottom() - self.height()
+        x = anchor.center().x() - self.width() // 2
+        below = anchor.bottom() + 4
+        # Put it above the icon when the tray sits at the bottom of the screen.
+        y = below if below + self.height() < area.bottom() else anchor.top() - self.height() - 4
 
         x = max(area.left(), min(x, area.right() - self.width()))
         y = max(area.top(), min(y, area.bottom() - self.height()))
         self.move(QPoint(x, y))
         self.show()
         self.raise_()
+        # A Qt::Popup is closed again the moment the application deactivates,
+        # and an agent app never became active to begin with - so the panel the
+        # tray menu just asked for died with the menu that asked for it. Taking
+        # activation is what a menu bar flyout does anyway.
+        self.activateWindow()
         self._update_overlay()
 
     # -- rendering -------------------------------------------------------------
@@ -332,6 +333,20 @@ def _separator(parent: QWidget, palette) -> QFrame:
     line.setFixedHeight(1)
     line.setStyleSheet(f"background-color: {_rgba(palette.border)}; border: none;")
     return line
+
+
+def _anchor_or_pointer(anchor: QRect | None) -> QRect:
+    """The rect to hang the panel under.
+
+    ``None`` means nothing would say where the tray icon is: most Wayland
+    compositors refuse, and on macOS a menu bar manager that hides the item
+    leaves ``QSystemTrayIcon.geometry()`` empty. The pointer is the better
+    answer than a screen corner - the click that asked for the panel has only
+    just happened, so the cursor is still on the menu bar.
+    """
+    if anchor is not None and not anchor.isNull() and not anchor.isEmpty():
+        return anchor
+    return QRect(QCursor.pos(), QSize(1, 1))
 
 
 def _clear_layout(layout) -> None:

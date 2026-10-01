@@ -116,6 +116,28 @@ class TestTranslucentWindowShadows:
         panel.deleteLater()
 
 
+class TestPanelIsShownOffTheCallingLoop:
+    """macOS opens the panel from a native menu item.
+
+    The menu runs its own tracking session and the IPC handler sits inside
+    blocking waitFor* calls, so both reach ``show_panel`` from a loop that has
+    not finished. A Qt::Popup shown there is closed again before it composites,
+    which is why the first click on the menu item did nothing.
+    """
+
+    def test_the_panel_waits_for_the_calling_loop(self, qapp, isolated_config):
+        from tokentray import app as app_mod
+
+        controller = app_mod.Controller(qapp, Config({"poll_interval": 120}))
+        shown: list[object] = []
+        controller.panel.popup_at = shown.append
+
+        controller.show_panel()
+        assert shown == []
+        qapp.processEvents()
+        assert len(shown) == 1
+
+
 class TestWelcomeToast:
     """A tray icon nobody can find is the same as no tray icon.
 

@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 from PySide6.QtCore import QPoint, QRect
@@ -151,6 +152,52 @@ def test_refresh_result_does_not_reopen_dismissed_panel(qapp):
     panel.popup_at(None)
     settle(qapp)
     assert any(label.text() == "17%" for label in panel.findChildren(QLabel))
+    panel.close()
+
+
+def test_a_missing_tray_rect_hangs_the_panel_under_the_pointer(qapp, monkeypatch):
+    """Nothing always says where the tray icon is.
+
+    Most Wayland compositors refuse, and on macOS a menu bar manager that hides
+    the item leaves ``QSystemTrayIcon.geometry()`` empty. The screen corner this
+    used to fall back to is nowhere near the click that asked for the panel.
+    """
+    import tokentray.ui.panel as panel_mod
+
+    area = qapp.primaryScreen().availableGeometry()
+    pointer = QPoint(area.center().x(), area.top() + 2)
+    monkeypatch.setattr(panel_mod, "QCursor", SimpleNamespace(pos=lambda: pointer))
+
+    panel = DetailPanel(on_refresh=lambda: None)
+    panel.update_views(views())
+    panel.popup_at(None)
+    settle(qapp)
+
+    assert area.contains(panel.geometry())
+    assert abs(panel.geometry().center().x() - pointer.x()) <= 2
+    assert panel.geometry().top() > pointer.y()
+    panel.close()
+
+
+def test_a_refresh_does_not_chase_a_pointer_that_moved(qapp, monkeypatch):
+    """The fallback anchor is resolved once, not on every re-show."""
+    import tokentray.ui.panel as panel_mod
+
+    area = qapp.primaryScreen().availableGeometry()
+    pointer = QPoint(area.center().x(), area.top() + 2)
+    monkeypatch.setattr(panel_mod, "QCursor", SimpleNamespace(pos=lambda: pointer))
+
+    panel = DetailPanel(on_refresh=lambda: None)
+    panel.update_views(views())
+    panel.popup_at(None)
+    settle(qapp)
+    placed = panel.geometry()
+
+    pointer = QPoint(area.left() + 5, area.bottom() - 5)
+    panel.update_views(views())
+    settle(qapp)
+
+    assert panel.geometry() == placed
     panel.close()
 
 

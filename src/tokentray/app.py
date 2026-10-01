@@ -265,6 +265,14 @@ class Controller(QObject):
         self.tray.quit_requested.connect(self.quit)
 
     def show_panel(self) -> None:
+        # Every caller reaches this from inside a loop that has not finished:
+        # macOS runs the tray menu in its own native tracking session, and the
+        # IPC handler is mid-way through its blocking waitFor* calls. A
+        # Qt::Popup shown there is torn down again before it ever composites,
+        # which is why the first click on the menu item appeared to do nothing.
+        QTimer.singleShot(0, self._show_panel_now)
+
+    def _show_panel_now(self) -> None:
         self.panel.update_views(self.views)
         self.panel.popup_at(self.tray.geometry())
 
