@@ -110,9 +110,12 @@ class Toast(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.WindowDoesNotAcceptFocus
         )
-        if sys.platform == "win32":
-            # The card already draws its own shadow inside the transparent window.
-            self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
+        # The card already draws its own shadow inside the transparent window.
+        # Leaving the native one on means a second shadow, and on macOS it is
+        # drawn around the whole 40px margin rather than the card - then cached
+        # from the empty alpha mask this window is ordered in with, so it stays
+        # on screen as a hollow rectangle for as long as the card is up.
+        self.setWindowFlag(Qt.WindowType.NoDropShadowWindowHint, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         # Without this the toast steals focus from whatever the user is typing in.
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
@@ -471,8 +474,6 @@ class ToastManager:
         Windows and Linux put the tray at the bottom. An explicit setting wins,
         for a taskbar somebody has moved or a second monitor.
         """
-        import sys
-
         if self.position == "top-right":
             from_top = True
         elif self.position == "bottom-right":
